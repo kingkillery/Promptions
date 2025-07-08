@@ -1,0 +1,27 @@
+{
+    "name": "promptions-redux",
+    "version": "1.0.0",
+    "description": "Monorepo for promptions",
+    "license": "MIT",
+    "private": true,
+    "workspaces": [
+        "apps/*",
+        "packages/*"
+    ],
+    "packageManager": "yarn@4.9.1",
+    "scripts": {
+        "clean": "yarn nx run-many -t clean",
+        "typecheck": "yarn nx run-many -t typecheck",
+        "build": "yarn nx run-many -t build",
+        "prettier:check": "prettier --check .",
+        "prettier:write": "prettier --write ."
+    },
+    "devDependencies": {
+        "@nx/web": "20.8.1",
+        "globals": "^16.0.0",
+        "nx": "20.8.1",
+        "prettier": "^3.5.3",
+        "typescript": ">=5.0.0",
+        "typescript-eslint": "^8.30.1"
+    }
+}

@@ -1,0 +1,37 @@
+{
+    "name": "promptions-ui",
+    "$schema": "../../node_modules/nx/schemas/project-schema.json",
+    "sourceRoot": "packages/promptions-ui/src",
+    "projectType": "library",
+    "targets": {
+        "build": {
+            "executor": "nx:run-commands",
+            "options": {
+                "command": "tsc",
+                "cwd": "packages/promptions-ui"
+            }
+        },
+        "typecheck": {
+            "executor": "nx:run-commands",
+            "options": {
+                "command": "tsc --noEmit",
+                "cwd": "packages/promptions-ui"
+            }
+        },
+        "test": {
+            "executor": "nx:run-commands",
+            "options": {
+                "command": "jest",
+                "cwd": "packages/promptions-ui"
+            }
+        },
+        "clean": {
+            "executor": "nx:run-commands",
+            "options": {
+                "command": "rimraf dist",
+                "cwd": "packages/promptions-ui"
+            }
+        }
+    },
+    "tags": ["type:lib", "scope:promptions-ui"]
+}
