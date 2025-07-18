@@ -286,7 +286,7 @@ function App() {
         <FluentProvider theme={webLightTheme}>
             <div className={styles.appContainer}>
                 <header className={styles.header}>
-                    <h1 className={styles.headerTitle}>Promptions Image Generator</h1>
+                    <h1 className={styles.headerTitle}>Promptions AI Image Generator</h1>
                     <div className={styles.headerActions}>
                         <Menu>
                             <MenuTrigger disableButtonEnhancement>

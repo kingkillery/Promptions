@@ -85,11 +85,8 @@ export const ChatHistory: React.FC<ChatHistoryProps> = ({ history, historySet, c
                 <div className={styles.messagesColumn}>
                     <div className={styles.welcomeContainer}>
                         <div className={styles.welcomeIcon}>🤖</div>
-                        <h2 className={styles.welcomeTitle}>Welcome to Promptions Chat</h2>
-                        <p className={styles.welcomeSubtitle}>
-                            Start a conversation by typing a message below. I'm here to help with your questions and
-                            tasks.
-                        </p>
+                        <h2 className={styles.welcomeTitle}>Welcome to Promptions AI Chat</h2>
+                        <p className={styles.welcomeSubtitle}>Start a conversation by typing a message below.</p>
                     </div>
                 </div>
                 <div className={styles.optionsColumn}></div>
