@@ -45,6 +45,7 @@ Example output format:
   ...
 ]
 \`\`\`
+</example>
 `,
         };
 

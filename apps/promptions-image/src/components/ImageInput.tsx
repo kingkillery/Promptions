@@ -1,6 +1,6 @@
 import React from "react";
 import { makeStyles, tokens, Textarea, Button, MessageBar, Spinner } from "@fluentui/react-components";
-import { ImageEdit24Regular, Sparkle24Regular, DismissCircle24Regular } from "@fluentui/react-icons";
+import { ImageEdit24Regular, Sparkle24Regular, DismissCircle24Regular, Info16Regular } from "@fluentui/react-icons";
 
 const useStyles = makeStyles({
     container: {
@@ -25,6 +25,14 @@ const useStyles = makeStyles({
         marginTop: tokens.spacingVerticalS,
         textWrap: "wrap",
         padding: tokens.spacingVerticalS,
+    },
+    disclaimerText: {
+        fontSize: tokens.fontSizeBase100,
+        color: tokens.colorNeutralForeground2,
+        display: "flex",
+        alignItems: "center",
+        gap: tokens.spacingHorizontalXXS,
+        paddingLeft: tokens.spacingHorizontalXS,
     },
 });
 
@@ -65,6 +73,11 @@ export const ImageInput: React.FC<ImageInputProps> = ({
                 disabled={isDisabled}
                 resize="vertical"
             />
+
+            <div className={styles.disclaimerText}>
+                <Info16Regular />
+                AI generated responses should be verified before taking action.
+            </div>
 
             <div className={styles.buttonContainer}>
                 {elaborateLoading && onCancelElaborate ? (

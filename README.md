@@ -74,6 +74,7 @@ yarn build
 ```
 
 This command will:
+
 - Build shared packages (`promptions-llm`, `promptions-ui`) first
 - Then build the applications (`promptions-chat`, `promptions-image`)
 - Respect dependency order using NX dependency graph
@@ -103,26 +104,28 @@ yarn workspace @promptions-redux/promptions-image dev
 #### Shared Packages (Build Order Matters)
 
 1. **Build LLM utilities first:**
-   ```bash
-   yarn workspace @promptions-redux/promptions-llm build
-   ```
+
+    ```bash
+    yarn workspace @promptions-redux/promptions-llm build
+    ```
 
 2. **Build UI components (depends on LLM package):**
-   ```bash
-   yarn workspace @promptions-redux/promptions-ui build
-   ```
+    ```bash
+    yarn workspace @promptions-redux/promptions-ui build
+    ```
 
 #### Applications
 
 3. **Build Chat application:**
-   ```bash
-   yarn workspace @promptions-redux/promptions-chat build
-   ```
+
+    ```bash
+    yarn workspace @promptions-redux/promptions-chat build
+    ```
 
 4. **Build Image application:**
-   ```bash
-   yarn workspace @promptions-redux/promptions-image build
-   ```
+    ```bash
+    yarn workspace @promptions-redux/promptions-image build
+    ```
 
 ### Watch Mode for Development
 
@@ -141,25 +144,25 @@ yarn workspace @promptions-redux/promptions-chat dev
 
 ### Root Level Commands
 
-| Command | Description |
-|---------|-------------|
-| `yarn build` | Build all packages and applications |
-| `yarn typecheck` | Run TypeScript type checking across all projects |
-| `yarn clean` | Clean all build artifacts |
-| `yarn prettier:check` | Check code formatting |
-| `yarn prettier:write` | Format code |
+| Command               | Description                                      |
+| --------------------- | ------------------------------------------------ |
+| `yarn build`          | Build all packages and applications              |
+| `yarn typecheck`      | Run TypeScript type checking across all projects |
+| `yarn clean`          | Clean all build artifacts                        |
+| `yarn prettier:check` | Check code formatting                            |
+| `yarn prettier:write` | Format code                                      |
 
 ### Individual Package Commands
 
 Each package supports these commands:
 
-| Command | Description |
-|---------|-------------|
-| `yarn workspace <package-name> build` | Build specific package |
-| `yarn workspace <package-name> typecheck` | Type check specific package |
-| `yarn workspace <package-name> clean` | Clean build artifacts |
-| `yarn workspace <package-name> dev` | Start development server (apps only) |
-| `yarn workspace <package-name> preview` | Preview production build (apps only) |
+| Command                                   | Description                          |
+| ----------------------------------------- | ------------------------------------ |
+| `yarn workspace <package-name> build`     | Build specific package               |
+| `yarn workspace <package-name> typecheck` | Type check specific package          |
+| `yarn workspace <package-name> clean`     | Clean build artifacts                |
+| `yarn workspace <package-name> dev`       | Start development server (apps only) |
+| `yarn workspace <package-name> preview`   | Preview production build (apps only) |
 
 ### Package Names
 
@@ -171,18 +174,21 @@ Each package supports these commands:
 ## 🏃‍♂️ Running Applications
 
 ### Chat Application
+
 ```bash
 yarn workspace @promptions-redux/promptions-chat dev
 # Runs on http://localhost:3003
 ```
 
 ### Image Generation Application
+
 ```bash
 yarn workspace @promptions-redux/promptions-image dev
 # Runs on http://localhost:3004
 ```
 
 ### Production Build Preview
+
 ```bash
 # Build and preview chat app
 yarn workspace @promptions-redux/promptions-chat build
@@ -198,32 +204,35 @@ yarn workspace @promptions-redux/promptions-image preview
 ### Common Issues
 
 1. **Build fails with dependency errors:**
-   ```bash
-   # Clean and rebuild everything
-   yarn clean
-   yarn install
-   yarn build
-   ```
+
+    ```bash
+    # Clean and rebuild everything
+    yarn clean
+    yarn install
+    yarn build
+    ```
 
 2. **TypeScript errors:**
-   ```bash
-   # Run type checking to see detailed errors
-   yarn typecheck
-   ```
+
+    ```bash
+    # Run type checking to see detailed errors
+    yarn typecheck
+    ```
 
 3. **Workspace dependency issues:**
-   ```bash
-   # List all workspaces to verify structure
-   yarn workspaces list
-   
-   # Check specific workspace info
-   yarn workspace <package-name> info
-   ```
+
+    ```bash
+    # List all workspaces to verify structure
+    yarn workspaces list
+
+    # Check specific workspace info
+    yarn workspace <package-name> info
+    ```
 
 4. **Port conflicts:**
-   - Chat app uses port 3003
-   - Image app uses port 3004
-   - Ensure these ports are available or modify in respective `package.json` files
+    - Chat app uses port 3003
+    - Image app uses port 3004
+    - Ensure these ports are available or modify in respective `package.json` files
 
 ### Build Order Dependencies
 
