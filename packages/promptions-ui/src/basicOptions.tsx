@@ -71,22 +71,24 @@ const SingleSelectOption: React.FC<SingleSelectOptionProps> = ({ option, optionI
         <div className={styles.choicesContainer}>
             {Object.entries(option.options).map(([key, label]) => (
                 <div key={key} className={styles.choiceItem}>
-                    <Radio
-                        value={key}
-                        checked={currentValue === key}
-                        disabled={disabled}
-                        onChange={() => {
-                            if (disabled) return;
-                            set(
-                                new BasicOptions(
-                                    options.options.map((opt, idx) =>
-                                        idx === optionIndex ? { ...opt, value: key } : opt,
-                                    ) as any,
-                                ),
-                            );
-                        }}
-                    />
-                    <Label>{label as string}</Label>
+                    <Label>
+                        <Radio
+                            value={key}
+                            checked={currentValue === key}
+                            disabled={disabled}
+                            onChange={() => {
+                                if (disabled) return;
+                                set(
+                                    new BasicOptions(
+                                        options.options.map((opt, idx) =>
+                                            idx === optionIndex ? { ...opt, value: key } : opt,
+                                        ) as any,
+                                    ),
+                                );
+                            }}
+                        />
+                        {label}
+                    </Label>
                 </div>
             ))}
         </div>
@@ -112,25 +114,27 @@ const MultiSelectOption: React.FC<MultiSelectOptionProps> = ({ option, optionInd
 
                 return (
                     <div key={key} className={styles.choiceItem}>
-                        <Checkbox
-                            checked={isChecked}
-                            disabled={disabled}
-                            onChange={() => {
-                                if (disabled) return;
-                                const newValues = isChecked
-                                    ? currentValues.filter((v: string) => v !== key)
-                                    : [...currentValues, key];
+                        <Label>
+                            <Checkbox
+                                checked={isChecked}
+                                disabled={disabled}
+                                onChange={() => {
+                                    if (disabled) return;
+                                    const newValues = isChecked
+                                        ? currentValues.filter((v: string) => v !== key)
+                                        : [...currentValues, key];
 
-                                set(
-                                    new BasicOptions(
-                                        options.options.map((opt, idx) =>
-                                            idx === optionIndex ? { ...opt, value: newValues } : opt,
-                                        ) as any,
-                                    ),
-                                );
-                            }}
-                        />
-                        <Label>{label}</Label>
+                                    set(
+                                        new BasicOptions(
+                                            options.options.map((opt, idx) =>
+                                                idx === optionIndex ? { ...opt, value: newValues } : opt,
+                                            ) as any,
+                                        ),
+                                    );
+                                }}
+                            />
+                            {label}
+                        </Label>
                     </div>
                 );
             })}
