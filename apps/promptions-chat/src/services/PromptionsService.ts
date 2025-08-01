@@ -1,5 +1,5 @@
 import { ChatService } from "./ChatService";
-import { Options, OptionSet } from "@promptions-redux/promptions-llm";
+import { Options, OptionSet } from "@promptions/promptions-llm";
 
 export interface ChatMessage {
     role: "user" | "assistant" | "system";

@@ -1,6 +1,6 @@
 import React from "react";
 import { makeStyles, tokens, Text, Spinner, Card, CardHeader } from "@fluentui/react-components";
-import { OptionRenderer, Options } from "@promptions-redux/promptions-ui";
+import { OptionRenderer, Options } from "@promptions/promptions-ui";
 
 const useStyles = makeStyles({
     container: {

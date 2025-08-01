@@ -1,6 +1,6 @@
-# @promptions-redux/promptions-ui
+# @promptions/promptions-ui
 
-UI components and utilities for promptions-redux applications.
+UI components and utilities for promptions applications.
 
 ## Features
 
@@ -12,13 +12,13 @@ UI components and utilities for promptions-redux applications.
 ## Installation
 
 ```bash
-npm install @promptions-redux/promptions-ui
+npm install @promptions/promptions-ui
 ```
 
 ## Usage
 
 ```typescript
-import { MessageOptions, VisualOptionSet } from "@promptions-redux/promptions-ui";
+import { MessageOptions, VisualOptionSet } from "@promptions/promptions-ui";
 
 // Use MessageOptions component to render interactive options
 <MessageOptions
@@ -35,7 +35,7 @@ This package requires:
 
 - React 18+
 - @fluentui/react-components 9+
-- @promptions-redux/promptions-llm
+- @promptions/promptions-llm
 
 ## License
 

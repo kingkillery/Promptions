@@ -1,4 +1,4 @@
-import { Options, OptionSet } from "@promptions-redux/promptions-llm";
+import { Options, OptionSet } from "@promptions/promptions-llm";
 
 export type OptionRenderer = React.FC<{
     options: Options;

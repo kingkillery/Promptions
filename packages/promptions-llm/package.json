@@ -1,5 +1,5 @@
 {
-    "name": "@promptions-redux/promptions-llm",
+    "name": "@promptions/promptions-llm",
     "version": "1.0.0",
     "description": "LLM utilities and integrations for promptions",
     "main": "dist/index.js",

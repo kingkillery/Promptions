@@ -89,4 +89,4 @@ yarn typecheck
 
 ## Contributing
 
-This is part of the promptions-redux monorepo. Please see the main README for contribution guidelines.
+This is part of the promptions monorepo. Please see the main README for contribution guidelines.

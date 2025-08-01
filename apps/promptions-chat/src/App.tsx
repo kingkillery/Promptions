@@ -19,7 +19,7 @@ import {
     compareOptionsParams,
     compareChatParams,
 } from "./types";
-import { compactOptionSet, basicOptionSet, BasicOptions, VisualOptionSet } from "@promptions-redux/promptions-ui";
+import { compactOptionSet, basicOptionSet, BasicOptions, VisualOptionSet } from "@promptions/promptions-ui";
 
 const useStyles = makeStyles({
     appContainer: {

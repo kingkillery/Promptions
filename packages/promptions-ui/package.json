@@ -1,7 +1,7 @@
 {
-    "name": "@promptions-redux/promptions-ui",
+    "name": "@promptions/promptions-ui",
     "version": "1.0.0",
-    "description": "UI components and utilities for promptions-redux",
+    "description": "UI components and utilities for promptions",
     "main": "dist/index.js",
     "types": "dist/index.d.ts",
     "license": "MIT",
@@ -34,6 +34,6 @@
         "typescript": ">=5.0.0"
     },
     "dependencies": {
-        "@promptions-redux/promptions-llm": "1.0.0"
+        "@promptions/promptions-llm": "1.0.0"
     }
 }

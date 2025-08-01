@@ -19,7 +19,7 @@ import {
     MultiOptionControl,
     BinaryOptionControl,
     basicOptionSet as b,
-} from "@promptions-redux/promptions-llm";
+} from "@promptions/promptions-llm";
 import { VisualOptionSet, OptionRenderer } from "./types";
 
 const useStyles = makeStyles({

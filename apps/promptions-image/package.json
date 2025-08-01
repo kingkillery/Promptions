@@ -1,5 +1,5 @@
 {
-    "name": "@promptions-redux/promptions-image",
+    "name": "@promptions/promptions-image",
     "version": "1.0.0",
     "type": "module",
     "description": "Image generation interface for promptions using OpenAI DALL-E and Fluent UI",
@@ -14,7 +14,7 @@
     "dependencies": {
         "@fluentui/react-components": "^9.54.0",
         "@fluentui/react-icons": "^2.0.258",
-        "@promptions-redux/promptions-ui": "workspace:*",
+        "@promptions/promptions-ui": "workspace:*",
         "immer": "^10.1.1",
         "openai": "^5.8.2",
         "react": "^18.3.1",
