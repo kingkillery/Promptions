@@ -17,13 +17,7 @@ import { PromptionsImageService } from "./services/PromptionsImageService";
 import { produce } from "immer";
 import { useMounted } from "./reactUtil";
 import { ImageInput, GeneratedImage, OptionsPanel } from "./components";
-import {
-    compactOptionSet,
-    basicOptionSet,
-    BasicOptions,
-    Options,
-    VisualOptionSet,
-} from "@promptions/promptions-ui";
+import { compactOptionSet, basicOptionSet, BasicOptions, Options, VisualOptionSet } from "@promptions/promptions-ui";
 
 const useStyles = makeStyles({
     appContainer: {
