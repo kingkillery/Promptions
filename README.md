@@ -1,4 +1,4 @@
-# Promptions Redux
+# Promptions
 
 A TypeScript monorepo for AI-powered applications built with React, Fluent UI, and OpenAI integration. This project includes chat and image generation interfaces along with shared UI components and LLM utilities.
 
@@ -300,3 +300,23 @@ corepack yarn --version  # Should show 4.9.1
 # If needed, prepare the specific version
 corepack prepare yarn@4.9.1 --activate
 ```
+
+## CONTRIBUTING
+
+This project welcomes contributions and suggestions. For information about contributing to Promptions, please see our [CONTRIBUTING.md](CONTRIBUTING.md) guide, which includes current issues to be resolved and other forms of contributing.
+
+## CONTACT
+
+We welcome feedback and collaboration from our audience. If you have suggestions, questions, or observe unexpected/offensive behavior in our technology, please contact us at [promptionsgithub@service.microsoft.com](promptionsgithub@service.microsoft.com).
+
+If the team receives reports of undesired behavior or identifies issues independently, we will update this repository with appropriate mitigations.
+
+## TRADEMARKS
+
+Microsoft, Windows, Microsoft Azure, and/or other Microsoft products and services referenced in the documentation may be either trademarks or registered trademarks of Microsoft in the United States and/or other countries. The licenses for this project do not grant you rights to use any Microsoft names, logos, or trademarks. Microsoft's general trademark guidelines can be found at http://go.microsoft.com/fwlink/?LinkID=254653.
+
+Any use of third-party trademarks or logos are subject to those third-party's policies.
+
+## PRIVACY & ETHICS
+
+Privacy information can be found at https://go.microsoft.com/fwlink/?LinkId=521839

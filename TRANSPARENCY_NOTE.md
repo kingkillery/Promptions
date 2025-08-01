@@ -7,7 +7,7 @@ Promptions was developed as a simple technique to help AI end-user application d
 A detailed discussion of Promptions, including how it was developed and tested, can be found in our paper at: https://aka.ms/promptionspaper.
 
 ### Intended Uses
-Promptions is best suited for incorporating into any end-user user interface in which parameterization of prompts to add further context to steer the AI would help steer the output to the user's preferences without having to write or speak the context. As the technique is very simple but effective, and can be easily customized to fit any application, and thus suit developers from individual vibe-coders to those in enterprise.
+Promptions is best suited for incorporating into any end-user user interface in which parameterization of prompts to add further context would help steer the output to the user's preferences, without having to write or speak the context. The technique is simple but effective, and can be easily customized to fit any application, suiting developers from individual vibe-coders to those in enterprise.
 
 | Real-world use                      | Description                                                                                                                                                                                                 |
 |------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
@@ -37,7 +37,7 @@ We do not recommend using Promptions in the context of high-risk decision making
 Promptions does not provide medical or clinical opinions and is not designed to replace the role of qualified medical professionals in appropriately identifying, assessing, diagnosing, or managing medical conditions.
 
 ## HOW TO GET STARTED
-To begin using Promptions, follow instructions at [microsoft/promptions: promptions](https://github.com/microsoft/promptions/)
+To begin using Promptions, follow instructions at [microsoft/promptions](https://github.com/microsoft/promptions/)
 
 ## EVALUATION
 Promptions was evaluated on its ability to explain spreadsheet formulas, python code, short text passages, and as a teaching aid for data analysis and visualization concepts
@@ -131,19 +131,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
-## TRADEMARKS
-
-Microsoft, Windows, Microsoft Azure, and/or other Microsoft products and services referenced in the documentation may be either trademarks or registered trademarks of Microsoft in the United States and/or other countries. The licenses for this project do not grant you rights to use any Microsoft names, logos, or trademarks. Microsoft's general trademark guidelines can be found at http://go.microsoft.com/fwlink/?LinkID=254653.
-
-Any use of third-party trademarks or logos are subject to those third-party's policies.
-
-## PRIVACY & ETHICS
-
-Privacy information can be found at https://go.microsoft.com/fwlink/?LinkId=521839
-
 ## CONTACT
-This project welcomes contributions and suggestions. For information about contributing to Promptions, please see our CONTRIBUTING.md guide, which includes current issues to be resolved and other forms of contributing.
+We welcome feedback and collaboration from our audience. If you have suggestions, questions, or observe unexpected/offensive behavior in our technology, please contact us at [promptionsgithub@service.microsoft.com](promptionsgithub@service.microsoft.com).
 
-We welcome feedback and collaboration from our audience. If you have suggestions, questions, or observe unexpected/offensive behavior in our technology, please contact us at [promptionsgithub@service.microsoft.com]( promptionsgithub@service.microsoft.com).
-
-If the team receives reports of undesired behavior or identifies issues independently, we will update this repository with appropriate mitigations. This project has adopted the Microsoft Open Source Code of Conduct. For more information, see the Code of Conduct FAQ or contact opencode@microsoft.com with any additional questions or comments.
+If the team receives reports of undesired behavior or identifies issues independently, we will update this repository with appropriate mitigations.
