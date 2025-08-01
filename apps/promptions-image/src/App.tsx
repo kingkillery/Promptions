@@ -23,7 +23,7 @@ import {
     BasicOptions,
     Options,
     VisualOptionSet,
-} from "@promptions-redux/promptions-ui";
+} from "@promptions/promptions-ui";
 
 const useStyles = makeStyles({
     appContainer: {

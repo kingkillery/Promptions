@@ -5,5 +5,5 @@ export * from "./types";
 export * from "./basicOptions";
 export * from "./compactOptions";
 
-export { BasicOptions } from "@promptions-redux/promptions-llm";
-export type { Options, OptionSet } from "@promptions-redux/promptions-llm";
+export { BasicOptions } from "@promptions/promptions-llm";
+export type { Options, OptionSet } from "@promptions/promptions-llm";

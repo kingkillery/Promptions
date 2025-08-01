@@ -1,5 +1,5 @@
 import { ImageService } from "./ImageService";
-import { BasicOptions, OptionSet } from "@promptions-redux/promptions-ui";
+import { BasicOptions, OptionSet } from "@promptions/promptions-ui";
 
 export class PromptionsImageService {
     private imageService: ImageService;

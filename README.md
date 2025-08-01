@@ -5,7 +5,7 @@ A TypeScript monorepo for AI-powered applications built with React, Fluent UI, a
 ## 🏗️ Project Structure
 
 ```
-promptions-redux/
+promptions/
 ├── apps/                           # Frontend applications
 │   ├── promptions-chat/           # Chat interface (port 3003)
 │   └── promptions-image/          # Image generation interface (port 3004)
@@ -56,7 +56,7 @@ npm install -g yarn@4.9.1
 ```bash
 # Clone the repository
 git clone <repository-url>
-cd promptions-redux
+cd promptions
 
 # Enable corepack (if not already enabled)
 corepack enable
@@ -83,18 +83,18 @@ This command will:
 
 ```bash
 # Start all applications in development mode
-yarn workspace @promptions-redux/promptions-chat dev &
-yarn workspace @promptions-redux/promptions-image dev
+yarn workspace @promptions/promptions-chat dev &
+yarn workspace @promptions/promptions-image dev
 ```
 
 Or start individual applications:
 
 ```bash
 # Chat application (runs on http://localhost:3003)
-yarn workspace @promptions-redux/promptions-chat dev
+yarn workspace @promptions/promptions-chat dev
 
 # Image generation application (runs on http://localhost:3004)
-yarn workspace @promptions-redux/promptions-image dev
+yarn workspace @promptions/promptions-image dev
 ```
 
 ## 🔧 Detailed Build Instructions
@@ -106,12 +106,12 @@ yarn workspace @promptions-redux/promptions-image dev
 1. **Build LLM utilities first:**
 
     ```bash
-    yarn workspace @promptions-redux/promptions-llm build
+    yarn workspace @promptions/promptions-llm build
     ```
 
 2. **Build UI components (depends on LLM package):**
     ```bash
-    yarn workspace @promptions-redux/promptions-ui build
+    yarn workspace @promptions/promptions-ui build
     ```
 
 #### Applications
@@ -119,12 +119,12 @@ yarn workspace @promptions-redux/promptions-image dev
 3. **Build Chat application:**
 
     ```bash
-    yarn workspace @promptions-redux/promptions-chat build
+    yarn workspace @promptions/promptions-chat build
     ```
 
 4. **Build Image application:**
     ```bash
-    yarn workspace @promptions-redux/promptions-image build
+    yarn workspace @promptions/promptions-image build
     ```
 
 ### Watch Mode for Development
@@ -133,11 +133,11 @@ For active development, use watch mode to automatically rebuild on changes:
 
 ```bash
 # Watch shared packages
-yarn workspace @promptions-redux/promptions-llm build:watch &
-yarn workspace @promptions-redux/promptions-ui build:watch &
+yarn workspace @promptions/promptions-llm build:watch &
+yarn workspace @promptions/promptions-ui build:watch &
 
 # Then start the applications in dev mode
-yarn workspace @promptions-redux/promptions-chat dev
+yarn workspace @promptions/promptions-chat dev
 ```
 
 ## 🛠️ Available Commands
@@ -166,24 +166,24 @@ Each package supports these commands:
 
 ### Package Names
 
-- `@promptions-redux/promptions-chat`
-- `@promptions-redux/promptions-image`
-- `@promptions-redux/promptions-llm`
-- `@promptions-redux/promptions-ui`
+- `@promptions/promptions-chat`
+- `@promptions/promptions-image`
+- `@promptions/promptions-llm`
+- `@promptions/promptions-ui`
 
 ## 🏃‍♂️ Running Applications
 
 ### Chat Application
 
 ```bash
-yarn workspace @promptions-redux/promptions-chat dev
+yarn workspace @promptions/promptions-chat dev
 # Runs on http://localhost:3003
 ```
 
 ### Image Generation Application
 
 ```bash
-yarn workspace @promptions-redux/promptions-image dev
+yarn workspace @promptions/promptions-image dev
 # Runs on http://localhost:3004
 ```
 
@@ -191,12 +191,12 @@ yarn workspace @promptions-redux/promptions-image dev
 
 ```bash
 # Build and preview chat app
-yarn workspace @promptions-redux/promptions-chat build
-yarn workspace @promptions-redux/promptions-chat preview
+yarn workspace @promptions/promptions-chat build
+yarn workspace @promptions/promptions-chat preview
 
 # Build and preview image app
-yarn workspace @promptions-redux/promptions-image build
-yarn workspace @promptions-redux/promptions-image preview
+yarn workspace @promptions/promptions-image build
+yarn workspace @promptions/promptions-image preview
 ```
 
 ## 🔍 Troubleshooting
