@@ -1,12 +1,33 @@
-# Promptions
+# Promptions - Ephemeral UI for Prompting
 
-A TypeScript monorepo for AI-powered applications built with React, Fluent UI, and OpenAI integration. This project includes chat and image generation interfaces along with shared UI components and LLM utilities.
+Ephemeral UI for prompt refinement - turn one prompt into interactive controls to steer and refine AI.
+![Promptions demo](./Promptions.gif)
 
-## 🏗️ Project Structure
+## Overview
+
+Promptions is a simple, flexible **dynamic prompt middleware technique for AI** that uses **ephemeral UI**, developed by the ENCODE and [Tools for Thought](https://aka.ms/toolsforthought) projects at [Microsoft Research, Cambridge, UK](https://www.microsoft.com/en-us/research/lab/microsoft-research-cambridge/). From a single, simple prompt, the system helps users steer the AI by suggesting parameterized choices as dynamically generated, ephemeral UI components. As users click on choices, the same output updates immediately—not just as additional chat responses. The dynamic UI can be configured per prompt.
+
+- For more on what Promptions can do, and for responsible AI suggestions, see our [TRANSPARENCY_NOTE.md](TRANSPARENCY_NOTE.md).
+- A detailed discussion of Promptions, including how it was developed and tested, can be found in our research paper "[Dynamic Prompt Middleware: Contextual Prompt Refinement Controls for Comprehension Tasks](https://aka.ms/promptionspaper)."
+
+Promptions is best suited for end-user interfaces where parameterizing prompts adds context that helps steer outputs toward user preferences, without requiring users to write or speak that context. The technique is simple yet effective, and it is easy to customize for many applications—serving developers from individual vibe coders to enterprise teams.
+
+| Real-world use                        | Description                                                                                                                                                                                     |
+| ------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Customer support chatbots             | Users refine support queries on the fly (e.g., specify tone or detail level) and see updated answers instantly, improving resolution speed and satisfaction.                                    |
+| Content creation platforms            | Writers and marketers tweak style, length, or format parameters through GUI controls, iterating drafts faster while maintaining creative direction.                                             |
+| Data analytics and BI dashboards      | Analysts adjust filters, aggregation levels, or visualization styles via checkboxes and sliders, regenerating AI-driven reports and insights instantly.                                         |
+| Educational tutoring systems          | Students select difficulty, focus topics, or feedback style, prompting the AI tutor to adapt explanations and examples to individual learning needs.                                            |
+| Healthcare decision-support tools     | Clinicians refine symptom context, risk factors, or treatment priorities through guided options, obtaining tailored diagnostic suggestions and care pathways.                                   |
+| Data annotation and curation          | Promptions can parameterize labeling decisions into structured GUI inputs (e.g. sentiment sliders, style toggles), improving consistency, speed, and auditability in dataset creation.          |
+| Interactive explainability & auditing | Promptions allows users to explore how AI outputs shift with different refinement choices, offering a lightweight way to probe bias, model boundaries, or failure modes through UI interaction. |
+| Human-AI co-creation experiments      | Promptions enables controlled studies of creative workflows—researchers can observe how users interact with dynamic controls vs. freeform input when generating stories, resumes, or code.      |
+
+## Project Structure
 
 ```
 promptions/
-├── apps/                           # Frontend applications
+├── apps/                          # Frontend applications
 │   ├── promptions-chat/           # Chat interface (port 3003)
 │   └── promptions-image/          # Image generation interface (port 3004)
 ├── packages/                      # Shared libraries
@@ -17,7 +38,7 @@ promptions/
 └── tsconfig.json                  # TypeScript configuration
 ```
 
-## 📋 Prerequisites
+## Prerequisites
 
 Before building and running this project, ensure you have:
 
@@ -49,7 +70,7 @@ If you prefer not to use corepack:
 npm install -g yarn@4.9.1
 ```
 
-## 🚀 Quick Start
+## Quick Start
 
 ### 1. Clone and Install Dependencies
 
@@ -58,7 +79,7 @@ npm install -g yarn@4.9.1
 git clone <repository-url>
 cd promptions
 
-# Enable corepack (if not already enabled)
+# Enable corepack (if not already enabled and using corepack)
 corepack enable
 
 # Install all dependencies across the monorepo
@@ -73,74 +94,49 @@ yarn install
 yarn build
 ```
 
-This command will:
+### 3. Run the applications (and set your API key)
 
-- Build shared packages (`promptions-llm`, `promptions-ui`) first
-- Then build the applications (`promptions-chat`, `promptions-image`)
-- Respect dependency order using NX dependency graph
+Set your OpenAI API key so the apps can call the OpenAI APIs.
 
-### 3. Development Mode
+Option A — .env files (recommended for local development):
 
-```bash
-# Start all applications in development mode
-yarn workspace @promptions/promptions-chat dev &
-yarn workspace @promptions/promptions-image dev
+- Create `apps/promptions-chat/.env` with:
+
+    ```dotenv
+    VITE_OPENAI_API_KEY=your_openai_api_key_here
+    ```
+
+- Create `apps/promptions-image/.env` with:
+
+    ```dotenv
+    VITE_OPENAI_API_KEY=your_openai_api_key_here
+    ```
+
+Option B — set it in your shell (PowerShell example):
+
+```powershell
+# Chat app
+$env:VITE_OPENAI_API_KEY="your_openai_api_key_here" ; yarn workspace @promptions/promptions-chat dev
+
+# Image app
+$env:VITE_OPENAI_API_KEY="your_openai_api_key_here" ; yarn workspace @promptions/promptions-image dev
 ```
 
-Or start individual applications:
+Start the dev servers:
 
-```bash
-# Chat application (runs on http://localhost:3003)
-yarn workspace @promptions/promptions-chat dev
+- Chat application (http://localhost:3003):
 
-# Image generation application (runs on http://localhost:3004)
-yarn workspace @promptions/promptions-image dev
-```
-
-## 🔧 Detailed Build Instructions
-
-### Building Individual Components
-
-#### Shared Packages (Build Order Matters)
-
-1. **Build LLM utilities first:**
-
-    ```bash
-    yarn workspace @promptions/promptions-llm build
+    ```powershell
+    yarn workspace @promptions/promptions-chat dev
     ```
 
-2. **Build UI components (depends on LLM package):**
-    ```bash
-    yarn workspace @promptions/promptions-ui build
+- Image generation application (http://localhost:3004):
+
+    ```powershell
+    yarn workspace @promptions/promptions-image dev
     ```
 
-#### Applications
-
-3. **Build Chat application:**
-
-    ```bash
-    yarn workspace @promptions/promptions-chat build
-    ```
-
-4. **Build Image application:**
-    ```bash
-    yarn workspace @promptions/promptions-image build
-    ```
-
-### Watch Mode for Development
-
-For active development, use watch mode to automatically rebuild on changes:
-
-```bash
-# Watch shared packages
-yarn workspace @promptions/promptions-llm build:watch &
-yarn workspace @promptions/promptions-ui build:watch &
-
-# Then start the applications in dev mode
-yarn workspace @promptions/promptions-chat dev
-```
-
-## 🛠️ Available Commands
+## Available Commands
 
 ### Root Level Commands
 
@@ -170,136 +166,6 @@ Each package supports these commands:
 - `@promptions/promptions-image`
 - `@promptions/promptions-llm`
 - `@promptions/promptions-ui`
-
-## 🏃‍♂️ Running Applications
-
-### Chat Application
-
-```bash
-yarn workspace @promptions/promptions-chat dev
-# Runs on http://localhost:3003
-```
-
-### Image Generation Application
-
-```bash
-yarn workspace @promptions/promptions-image dev
-# Runs on http://localhost:3004
-```
-
-### Production Build Preview
-
-```bash
-# Build and preview chat app
-yarn workspace @promptions/promptions-chat build
-yarn workspace @promptions/promptions-chat preview
-
-# Build and preview image app
-yarn workspace @promptions/promptions-image build
-yarn workspace @promptions/promptions-image preview
-```
-
-## 🔍 Troubleshooting
-
-### Common Issues
-
-1. **Build fails with dependency errors:**
-
-    ```bash
-    # Clean and rebuild everything
-    yarn clean
-    yarn install
-    yarn build
-    ```
-
-2. **TypeScript errors:**
-
-    ```bash
-    # Run type checking to see detailed errors
-    yarn typecheck
-    ```
-
-3. **Workspace dependency issues:**
-
-    ```bash
-    # List all workspaces to verify structure
-    yarn workspaces list
-
-    # Check specific workspace info
-    yarn workspace <package-name> info
-    ```
-
-4. **Port conflicts:**
-    - Chat app uses port 3003
-    - Image app uses port 3004
-    - Ensure these ports are available or modify in respective `package.json` files
-
-### Build Order Dependencies
-
-The build system (NX) automatically handles dependencies, but manual builds should follow this order:
-
-1. `promptions-llm` (no dependencies)
-2. `promptions-ui` (depends on promptions-llm)
-3. `promptions-chat` (depends on promptions-ui)
-4. `promptions-image` (depends on promptions-ui)
-
-## 🌐 Environment Setup
-
-### OpenAI Integration
-
-Both applications require OpenAI API access. Set up your environment:
-
-1. Create an OpenAI account and get an API key
-2. Configure the API key in your application settings
-3. Ensure you have appropriate usage limits for your intended use
-
-### Development Environment
-
-- **IDE:** VS Code recommended with TypeScript and React extensions
-- **Browser:** Modern browser with React DevTools extension
-- **Terminal:** PowerShell, Command Prompt, or any terminal with Node.js access
-
-## 📦 Package Manager
-
-This project uses **Yarn 4.9.1** with workspaces enabled. The package manager version is locked via the `packageManager` field in `package.json` and automatically managed by **corepack** to ensure consistency across development environments.
-
-### Corepack Benefits
-
-- **Automatic Version Management**: No need to manually install or update Yarn
-- **Version Consistency**: Everyone uses the exact same Yarn version (4.9.1)
-- **Zero Configuration**: Works out of the box with Node.js v16.10+
-
-### Useful Yarn Commands
-
-```bash
-# List all workspaces
-yarn workspaces list
-
-# Run command in all workspaces
-yarn workspaces foreach <command>
-
-# Add dependency to specific workspace
-yarn workspace <package-name> add <dependency>
-
-# Remove dependency from specific workspace
-yarn workspace <package-name> remove <dependency>
-```
-
-### Troubleshooting Corepack
-
-If you encounter issues with corepack:
-
-```bash
-# Disable and re-enable corepack
-corepack disable
-corepack enable
-
-# Check if the correct version is being used
-corepack yarn --version  # Should show 4.9.1
-
-# If needed, prepare the specific version
-corepack prepare yarn@4.9.1 --activate
-```
 
 ## CONTRIBUTING
 
