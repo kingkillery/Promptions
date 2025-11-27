@@ -3,7 +3,8 @@
     "allow": [
       "Bash(corepack enable:*)",
       "Bash(yarn install)",
-      "Bash(yarn build)"
+      "Bash(yarn build)",
+      "Bash(git push:*)"
     ],
     "deny": [],
     "ask": []

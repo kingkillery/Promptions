@@ -1,21 +1,21 @@
 steps:
   # Build the Docker image
   - name: 'gcr.io/cloud-builders/docker'
-    args: ['build', '-t', 'gcr.io/$PROJECT_ID/promptions:$COMMIT_SHA', '.']
-  
-  # Push the image to Google Container Registry
+    args: ['build', '-t', 'europe-west1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/promption-pk-version:$COMMIT_SHA', '.']
+
+  # Push the image to Artifact Registry
   - name: 'gcr.io/cloud-builders/docker'
-    args: ['push', 'gcr.io/$PROJECT_ID/promptions:$COMMIT_SHA']
-  
+    args: ['push', 'europe-west1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/promption-pk-version:$COMMIT_SHA']
+
   # Deploy to Cloud Run
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     entrypoint: 'gcloud'
     args:
     - 'run'
     - 'deploy'
-    - 'promptions'
-    - '--image=gcr.io/$PROJECT_ID/promptions:$COMMIT_SHA'
-    - '--region=us-central1'
+    - 'promption-pk-version'
+    - '--image=europe-west1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/promption-pk-version:$COMMIT_SHA'
+    - '--region=europe-west1'
     - '--platform=managed'
     - '--allow-unauthenticated'
     - '--port=80'
@@ -25,9 +25,9 @@ steps:
     - '--cpu=1'
     - '--memory=512Mi'
     - '--quiet'
-    
+
 images:
-  - 'gcr.io/$PROJECT_ID/promptions:$COMMIT_SHA'
+  - 'europe-west1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/promption-pk-version:$COMMIT_SHA'
 
 options:
   logging: CLOUD_LOGGING_ONLY
