@@ -1,0 +1,23 @@
+version: '3.8'
+
+services:
+  promptions:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8080:80"
+    environment:
+      # OpenAI API key should be provided as an environment variable
+      # For local development, you can set it in your shell before running docker-compose
+      # Or use a .env file (make sure to add .env to your .gitignore)
+    volumes:
+      # Mount .env file if it exists outside the container (optional)
+      - ./.env:/app/.env:ro
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/chat"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s

@@ -1,0 +1,33 @@
+steps:
+  # Build the Docker image
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['build', '-t', 'gcr.io/$PROJECT_ID/promptions:$COMMIT_SHA', '.']
+  
+  # Push the image to Google Container Registry
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'gcr.io/$PROJECT_ID/promptions:$COMMIT_SHA']
+  
+  # Deploy to Cloud Run
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: 'gcloud'
+    args:
+    - 'run'
+    - 'deploy'
+    - 'promptions'
+    - '--image=gcr.io/$PROJECT_ID/promptions:$COMMIT_SHA'
+    - '--region=us-central1'
+    - '--platform=managed'
+    - '--allow-unauthenticated'
+    - '--port=80'
+    - '--concurrency=80'
+    - '--min-instances=0'
+    - '--max-instances=10'
+    - '--cpu=1'
+    - '--memory=512Mi'
+    - '--quiet'
+    
+images:
+  - 'gcr.io/$PROJECT_ID/promptions:$COMMIT_SHA'
+
+options:
+  logging: CLOUD_LOGGING_ONLY
