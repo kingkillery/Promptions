@@ -7,11 +7,11 @@ RUN corepack enable
 # Set working directory
 WORKDIR /app
 
-# Copy package.json and yarn.lock first for better caching
-COPY package.json yarn.lock* ./
+# Copy package.json, yarn.lock, and yarn config for better caching
+COPY package.json yarn.lock .yarnrc.yml ./
 
 # Install dependencies
-RUN yarn install --frozen-lockfile
+RUN yarn install
 
 # Copy the rest of the code
 COPY . .
