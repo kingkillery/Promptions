@@ -20,6 +20,13 @@ export class PromptionsService {
         onOptions: (options: Options, done: boolean) => void,
         options?: { signal?: AbortSignal },
     ): Promise<void> {
+        // Check for deterministic options first
+        const deterministicOptions = this.checkDeterministicOptions(chatHistory);
+        if (deterministicOptions) {
+            onOptions(deterministicOptions, true);
+            return;
+        }
+
         const systemPrompt: ChatMessage = {
             role: "system",
             content: `You are an AI assistant that generates interactive options based on conversation history. 
@@ -144,5 +151,58 @@ Example output format:
         } catch (error) {
             return undefined;
         }
+    }
+
+    private checkDeterministicOptions(chatHistory: ChatMessage[]): Options | undefined {
+        const lastMessage = chatHistory[chatHistory.length - 1];
+        if (!lastMessage || lastMessage.role !== "user") return undefined;
+
+        const content = lastMessage.content.toLowerCase();
+
+        // Deterministic rules mapping patterns to option JSONs
+        const rules: { pattern: RegExp; optionsJson: string }[] = [
+            {
+                pattern: /^\/settings|show settings/i,
+                optionsJson: JSON.stringify([
+                    {
+                        kind: "single-select",
+                        label: "Theme",
+                        options: { light: "Light", dark: "Dark", system: "System" },
+                        value: "system",
+                    },
+                    {
+                        kind: "binary-select",
+                        label: "Notifications",
+                        options: { enabled: "On", disabled: "Off" },
+                        value: "enabled",
+                    },
+                ]),
+            },
+            {
+                pattern: /^\/predict|predict mode/i,
+                optionsJson: JSON.stringify([
+                    {
+                        kind: "single-select",
+                        label: "Prediction Model",
+                        options: { fast: "Fast (Low Latency)", accurate: "Accurate (High Quality)" },
+                        value: "fast",
+                    },
+                    {
+                        kind: "multi-select",
+                        label: "Data Sources",
+                        options: { history: "Chat History", web: "Web Search", docs: "Documentation" },
+                        value: ["history"],
+                    },
+                ]),
+            },
+        ];
+
+        for (const rule of rules) {
+            if (rule.pattern.test(content)) {
+                return this.optionSet.validateJSON(rule.optionsJson);
+            }
+        }
+
+        return undefined;
     }
 }
