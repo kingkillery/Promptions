@@ -68,18 +68,7 @@ function routeHandler(req, res) {
     return;
   }
 
-  // Chat app (default)
-  if (parsedUrl.pathname === '/' || parsedUrl.pathname.startsWith('/chat')) {
-    let relativePath = parsedUrl.pathname === '/' ? '/' : parsedUrl.pathname.replace('/chat', '') || '/';
-    if (relativePath === '/') {
-      relativePath = '/index.html';
-    }
-    const filePath = path.join(CHAT_DIR, relativePath);
-    const ext = path.extname(filePath);
-    return serveFile(res, filePath, getContentType(ext));
-  }
-
-  // Image app
+  // Image app (must be checked first since it's more specific)
   if (parsedUrl.pathname.startsWith('/image')) {
     let relativePath = parsedUrl.pathname.replace('/image', '') || '/';
     if (relativePath === '/') {
@@ -90,9 +79,16 @@ function routeHandler(req, res) {
     return serveFile(res, filePath, getContentType(ext));
   }
 
-  // 404 fallback
-  res.writeHead(404, { 'Content-Type': 'text/plain' });
-  res.end('Not Found');
+  // Chat app (default - serves everything else including /assets, /, /chat, etc.)
+  let relativePath = parsedUrl.pathname.startsWith('/chat')
+    ? parsedUrl.pathname.replace('/chat', '') || '/'
+    : parsedUrl.pathname;
+  if (relativePath === '/') {
+    relativePath = '/index.html';
+  }
+  const filePath = path.join(CHAT_DIR, relativePath);
+  const ext = path.extname(filePath);
+  return serveFile(res, filePath, getContentType(ext));
 }
 
 const server = http.createServer(routeHandler);

@@ -5,7 +5,9 @@
       "Bash(yarn install)",
       "Bash(yarn build)",
       "Bash(git push:*)",
-      "WebSearch"
+      "WebSearch",
+      "Bash(git add:*)",
+      "Bash(git commit:*)"
     ],
     "deny": [],
     "ask": []
