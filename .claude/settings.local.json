@@ -4,7 +4,8 @@
       "Bash(corepack enable:*)",
       "Bash(yarn install)",
       "Bash(yarn build)",
-      "Bash(git push:*)"
+      "Bash(git push:*)",
+      "WebSearch"
     ],
     "deny": [],
     "ask": []

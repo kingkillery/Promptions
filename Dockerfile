@@ -10,7 +10,13 @@ WORKDIR /app
 # Copy package.json, yarn.lock, and yarn config for better caching
 COPY package.json yarn.lock .yarnrc.yml ./
 
-# Install dependencies
+# Copy all workspace package.json files (required for yarn workspaces)
+COPY apps/promptions-chat/package.json ./apps/promptions-chat/
+COPY apps/promptions-image/package.json ./apps/promptions-image/
+COPY packages/promptions-llm/package.json ./packages/promptions-llm/
+COPY packages/promptions-ui/package.json ./packages/promptions-ui/
+
+# Install dependencies (now yarn can see all workspaces)
 RUN yarn install
 
 # Copy the rest of the code
