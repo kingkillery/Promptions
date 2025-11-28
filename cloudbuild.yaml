@@ -7,7 +7,7 @@ steps:
   - name: 'gcr.io/cloud-builders/docker'
     args: ['push', 'europe-west1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/promption-pk-version:$COMMIT_SHA']
 
-  # Deploy to Cloud Run
+  # Deploy to Cloud Run with secret
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     entrypoint: 'gcloud'
     args:
@@ -24,6 +24,7 @@ steps:
     - '--max-instances=10'
     - '--cpu=1'
     - '--memory=512Mi'
+    - '--set-secrets=OPENAI_API_KEY=OPENAI_API_KEY:latest'
     - '--quiet'
 
 images:

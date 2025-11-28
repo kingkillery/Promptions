@@ -1,4 +1,5 @@
 const http = require('http');
+const https = require('https');
 const url = require('url');
 const path = require('path');
 const fs = require('fs');
@@ -6,6 +7,9 @@ const fs = require('fs');
 const PORT = process.env.PORT || 8080;
 const CHAT_DIR = path.join(__dirname, 'chat');
 const IMAGE_DIR = path.join(__dirname, 'image');
+
+// OpenAI API key from Cloud Run secret or environment variable
+const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 
 // Security: Prevent path traversal
 function isSafePath(targetPath, rootDir) {
@@ -76,6 +80,179 @@ function getContentType(ext) {
   }
 }
 
+// Helper to read request body
+function readBody(req) {
+  return new Promise((resolve, reject) => {
+    let body = '';
+    req.on('data', chunk => body += chunk);
+    req.on('end', () => {
+      try {
+        resolve(JSON.parse(body));
+      } catch (e) {
+        reject(new Error('Invalid JSON'));
+      }
+    });
+    req.on('error', reject);
+  });
+}
+
+// Proxy chat completions to OpenAI (non-streaming)
+async function handleChatProxy(req, res) {
+  if (!OPENAI_API_KEY) {
+    res.writeHead(500, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ error: 'OpenAI API key not configured on server' }));
+    return;
+  }
+
+  try {
+    const body = await readBody(req);
+
+    const postData = JSON.stringify({
+      model: body.model || 'gpt-4.1',
+      messages: body.messages,
+      temperature: body.temperature ?? 0.7,
+      max_tokens: body.max_tokens ?? 1000,
+    });
+
+    const options = {
+      hostname: 'api.openai.com',
+      port: 443,
+      path: '/v1/chat/completions',
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${OPENAI_API_KEY}`,
+        'Content-Length': Buffer.byteLength(postData),
+      },
+    };
+
+    const proxyReq = https.request(options, (proxyRes) => {
+      res.writeHead(proxyRes.statusCode, { 'Content-Type': 'application/json' });
+      proxyRes.pipe(res);
+    });
+
+    proxyReq.on('error', (e) => {
+      console.error('Proxy error:', e);
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Proxy request failed' }));
+    });
+
+    proxyReq.write(postData);
+    proxyReq.end();
+  } catch (e) {
+    console.error('Chat proxy error:', e);
+    res.writeHead(400, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ error: e.message }));
+  }
+}
+
+// Proxy streaming chat completions to OpenAI
+async function handleChatStreamProxy(req, res) {
+  if (!OPENAI_API_KEY) {
+    res.writeHead(500, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ error: 'OpenAI API key not configured on server' }));
+    return;
+  }
+
+  try {
+    const body = await readBody(req);
+
+    const postData = JSON.stringify({
+      model: body.model || 'gpt-4.1',
+      messages: body.messages,
+      temperature: body.temperature ?? 0.7,
+      max_tokens: body.max_tokens ?? 1000,
+      stream: true,
+    });
+
+    const options = {
+      hostname: 'api.openai.com',
+      port: 443,
+      path: '/v1/chat/completions',
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${OPENAI_API_KEY}`,
+        'Content-Length': Buffer.byteLength(postData),
+      },
+    };
+
+    const proxyReq = https.request(options, (proxyRes) => {
+      res.writeHead(proxyRes.statusCode, {
+        'Content-Type': 'text/event-stream',
+        'Cache-Control': 'no-cache',
+        'Connection': 'keep-alive',
+      });
+      proxyRes.pipe(res);
+    });
+
+    proxyReq.on('error', (e) => {
+      console.error('Stream proxy error:', e);
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Proxy request failed' }));
+    });
+
+    proxyReq.write(postData);
+    proxyReq.end();
+  } catch (e) {
+    console.error('Chat stream proxy error:', e);
+    res.writeHead(400, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ error: e.message }));
+  }
+}
+
+// Proxy image generation to OpenAI
+async function handleImageProxy(req, res) {
+  if (!OPENAI_API_KEY) {
+    res.writeHead(500, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ error: 'OpenAI API key not configured on server' }));
+    return;
+  }
+
+  try {
+    const body = await readBody(req);
+
+    const postData = JSON.stringify({
+      model: body.model || 'dall-e-3',
+      prompt: body.prompt,
+      n: body.n ?? 1,
+      size: body.size || '1024x1024',
+      quality: body.quality || 'standard',
+      response_format: body.response_format || 'url',
+    });
+
+    const options = {
+      hostname: 'api.openai.com',
+      port: 443,
+      path: '/v1/images/generations',
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${OPENAI_API_KEY}`,
+        'Content-Length': Buffer.byteLength(postData),
+      },
+    };
+
+    const proxyReq = https.request(options, (proxyRes) => {
+      res.writeHead(proxyRes.statusCode, { 'Content-Type': 'application/json' });
+      proxyRes.pipe(res);
+    });
+
+    proxyReq.on('error', (e) => {
+      console.error('Image proxy error:', e);
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Proxy request failed' }));
+    });
+
+    proxyReq.write(postData);
+    proxyReq.end();
+  } catch (e) {
+    console.error('Image proxy error:', e);
+    res.writeHead(400, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ error: e.message }));
+  }
+}
+
 function routeHandler(req, res) {
   const parsedUrl = url.parse(req.url, true);
   const pathname = parsedUrl.pathname;
@@ -89,6 +266,19 @@ function routeHandler(req, res) {
     res.writeHead(200);
     res.end();
     return;
+  }
+
+  // API Proxy endpoints
+  if (pathname === '/api/chat' && req.method === 'POST') {
+    return handleChatProxy(req, res);
+  }
+
+  if (pathname === '/api/chat/stream' && req.method === 'POST') {
+    return handleChatStreamProxy(req, res);
+  }
+
+  if (pathname === '/api/images/generate' && req.method === 'POST') {
+    return handleImageProxy(req, res);
   }
 
   // Image app

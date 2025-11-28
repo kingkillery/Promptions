@@ -1,28 +1,24 @@
-import OpenAI from "openai";
-
 interface ChatMessage {
     role: "user" | "assistant" | "system";
     content: string;
 }
 
+// Get the API base URL - use relative path in production (same origin)
+// or localhost in development
+function getApiBaseUrl(): string {
+    // In production, use relative path (same server serves API)
+    if (import.meta.env.PROD) {
+        return "";
+    }
+    // In development, you can point to a local server or use the Vite proxy
+    return import.meta.env.VITE_API_BASE_URL || "";
+}
+
 export class ChatService {
-    private client: OpenAI;
+    private baseUrl: string;
 
     constructor() {
-        // In a real application, you'd want to handle the API key more securely
-        // For development, you can set VITE_OPENAI_API_KEY in your .env file
-        const apiKey = import.meta.env.VITE_OPENAI_API_KEY || process.env.OPENAI_API_KEY;
-
-        if (!apiKey) {
-            throw new Error(
-                "OpenAI API key is required. Please set VITE_OPENAI_API_KEY in your environment variables.",
-            );
-        }
-
-        this.client = new OpenAI({
-            apiKey,
-            dangerouslyAllowBrowser: true, // Only for demo purposes - use a backend in production
-        });
+        this.baseUrl = getApiBaseUrl();
     }
 
     async streamChat(
@@ -33,25 +29,66 @@ export class ChatService {
         console.log(JSON.stringify(messages, null, 2));
 
         try {
-            const stream = await this.client.chat.completions.create(
-                {
+            const response = await fetch(`${this.baseUrl}/api/chat/stream`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                    messages,
                     model: "gpt-4.1",
-                    messages: messages as OpenAI.Chat.Completions.ChatCompletionMessageParam[],
-                    stream: true,
                     temperature: 0.7,
                     max_tokens: 1000,
-                },
-                {
-                    signal: options?.signal,
-                },
-            );
+                }),
+                signal: options?.signal,
+            });
 
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(
+                    errorData.error || `HTTP error! status: ${response.status}`,
+                );
+            }
+
+            const reader = response.body?.getReader();
+            if (!reader) {
+                throw new Error("No response body");
+            }
+
+            const decoder = new TextDecoder();
             let accumulatedContent = "";
+            let buffer = "";
 
-            for await (const chunk of stream) {
-                const content = chunk.choices[0]?.delta?.content ?? "";
-                accumulatedContent += content;
-                onContent(accumulatedContent, false);
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+
+                buffer += decoder.decode(value, { stream: true });
+
+                // Process SSE events
+                const lines = buffer.split("\n");
+                buffer = lines.pop() || ""; // Keep incomplete line in buffer
+
+                for (const line of lines) {
+                    if (line.startsWith("data: ")) {
+                        const data = line.slice(6);
+                        if (data === "[DONE]") {
+                            onContent(accumulatedContent, true);
+                            return;
+                        }
+                        try {
+                            const parsed = JSON.parse(data);
+                            const content =
+                                parsed.choices?.[0]?.delta?.content ?? "";
+                            if (content) {
+                                accumulatedContent += content;
+                                onContent(accumulatedContent, false);
+                            }
+                        } catch {
+                            // Skip invalid JSON lines
+                        }
+                    }
+                }
             }
 
             onContent(accumulatedContent, true);
@@ -63,14 +100,28 @@ export class ChatService {
 
     async sendMessage(messages: ChatMessage[]): Promise<string> {
         try {
-            const response = await this.client.chat.completions.create({
-                model: "gpt-3.5-turbo",
-                messages: messages as OpenAI.Chat.Completions.ChatCompletionMessageParam[],
-                temperature: 0.7,
-                max_tokens: 1000,
+            const response = await fetch(`${this.baseUrl}/api/chat`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                    messages,
+                    model: "gpt-3.5-turbo",
+                    temperature: 0.7,
+                    max_tokens: 1000,
+                }),
             });
 
-            return response.choices[0]?.message?.content || "No response received";
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(
+                    errorData.error || `HTTP error! status: ${response.status}`,
+                );
+            }
+
+            const data = await response.json();
+            return data.choices?.[0]?.message?.content || "No response received";
         } catch (error) {
             console.error("Error in sendMessage:", error);
             throw error;
