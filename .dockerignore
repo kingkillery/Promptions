@@ -1,0 +1,44 @@
+# Directories
+node_modules
+coverage
+test
+scripts
+.cache
+.temp
+.vite
+
+# Ignore app dist/build folders (rebuilt in Docker)
+apps/*/dist
+apps/*/build
+
+# Include packages dist for TypeScript resolution during build
+# packages/*/dist is NOT ignored
+
+# Files
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+*.log
+.DS_Store
+Thumbs.db
+
+# Development files
+.vscode
+.idea
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.swp
+
+# Git
+.git
+.gitignore
+
+# Documentation
+docs
+TRANSPARENCY_NOTE.md
+CONTRIBUTING.md
+*.md

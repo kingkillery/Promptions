@@ -1,0 +1,24 @@
+# Ignore files for Google Cloud Build
+.git
+.gitignore
+node_modules
+.cache
+.vite
+.env
+.env.*
+*.log
+.DS_Store
+Thumbs.db
+.vscode
+.idea
+*.swp
+docs
+*.md
+nul
+
+# Ignore app dist folders (rebuilt in Docker)
+apps/*/dist
+apps/*/build
+
+# BUT include package dist folders (needed for TypeScript resolution)
+# packages/*/dist is NOT ignored
