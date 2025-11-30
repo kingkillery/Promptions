@@ -1,35 +1,20 @@
 // State type for reactive state management
 export type State<T> = { get: T; set: (fn: (prev: T) => void) => void };
 
+// Provider type for image generation
+export type ImageProvider = "openai" | "gemini" | "openrouter";
+
 // Image generation parameters
-export interface BaseImageGenerationParams {
+export interface ImageGenerationParams {
+    kind: string; // Model ID (e.g., "dall-e-3", "imagen-3.0-generate-001")
+    provider?: ImageProvider; // Provider (defaults to "openai")
     prompt: string;
-    size?: "1024x1024" | "1024x1792" | "1792x1024";
-    quality?: "high" | "medium" | "low";
+    size?: string;
+    quality?: string;
+    style?: string;
     n?: number;
+    aspectRatio?: string; // For Gemini
 }
-
-// GPT Image 1 parameters
-export interface GPTImage1Params {
-    kind: "gpt-image-1";
-    prompt: string;
-    size?: "1024x1024" | "1024x1792" | "1792x1024";
-    quality?: "high" | "medium" | "low";
-    n?: number;
-}
-
-// DALL-E 3 parameters
-export interface DallE3Params {
-    kind: "dall-e-3";
-    prompt: string;
-    size?: "1024x1024" | "1024x1792" | "1792x1024";
-    quality?: "standard" | "hd";
-    style?: "vivid" | "natural";
-    n?: number;
-}
-
-// Union type for all image generation parameters
-export type ImageGenerationParams = GPTImage1Params | DallE3Params;
 
 // Generated image result
 export interface GeneratedImage {

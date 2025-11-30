@@ -6,13 +6,14 @@ import { ModelSelector } from "./ModelSelector";
 
 const useStyles = makeStyles({
     sidebar: {
-        height: "100vh",
+        height: "100%",
         backgroundColor: tokens.colorNeutralBackground2,
         borderRight: `1px solid ${tokens.colorNeutralStroke2}`,
         display: "flex",
         flexDirection: "column",
         transition: "width 0.3s ease-in-out",
-        overflow: "hidden",
+        overflowX: "hidden",
+        overflowY: "auto",
     },
     sidebarCollapsed: {
         width: "60px",

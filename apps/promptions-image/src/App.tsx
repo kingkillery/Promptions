@@ -16,37 +16,45 @@ import { ImageService } from "./services/ImageService";
 import { PromptionsImageService } from "./services/PromptionsImageService";
 import { produce } from "immer";
 import { useMounted } from "./reactUtil";
-import { ImageInput, GeneratedImage, OptionsPanel, Login } from "./components";
-import { compactOptionSet, basicOptionSet, BasicOptions, Options, VisualOptionSet } from "@promptions/promptions-ui";
+import { ImageInput, GeneratedImage, OptionsPanel, Login, ImageModelSelector } from "./components";
+import { compactOptionSet, basicOptionSet, BasicOptions, Options, VisualOptionSet, AppHeader } from "@promptions/promptions-ui";
 import { AuthProvider, useAuth } from "./auth/AuthContext";
+import { ImageModelConfigProvider, useImageModelConfig } from "./config/ImageModelConfig";
 
 const useStyles = makeStyles({
-    appContainer: {
+    root: {
         height: "100vh",
         display: "flex",
         flexDirection: "column",
+        overflow: "hidden",
+    },
+    appContainer: {
+        flex: 1,
+        display: "flex",
+        flexDirection: "row",
         backgroundColor: tokens.colorNeutralBackground1,
         fontFamily: tokens.fontFamilyBase,
+        overflow: "hidden",
     },
-    header: {
-        padding: `${tokens.spacingVerticalM} ${tokens.spacingHorizontalXL}`,
+    sidebar: {
+        width: "300px",
+        minWidth: "300px",
+        flexShrink: 0,
+        alignSelf: "stretch",
         backgroundColor: tokens.colorNeutralBackground2,
-        borderBottom: `1px solid ${tokens.colorNeutralStroke2}`,
-        boxShadow: tokens.shadow4,
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "space-between",
+        borderRight: `1px solid ${tokens.colorNeutralStroke2}`,
+        overflowX: "hidden",
+        overflowY: "auto",
+        padding: tokens.spacingHorizontalM,
     },
-    headerTitle: {
-        fontSize: tokens.fontSizeBase600,
+    sidebarSection: {
+        marginBottom: tokens.spacingVerticalM,
+    },
+    sidebarTitle: {
+        fontSize: tokens.fontSizeBase200,
         fontWeight: tokens.fontWeightSemibold,
         color: tokens.colorNeutralForeground1,
-        margin: 0,
-    },
-    headerActions: {
-        display: "flex",
-        alignItems: "center",
-        gap: tokens.spacingHorizontalM,
+        marginBottom: tokens.spacingVerticalS,
     },
     mainContainer: {
         flex: 1,
@@ -60,6 +68,7 @@ const useStyles = makeStyles({
         display: "flex",
         flexDirection: "column",
         gap: tokens.spacingVerticalL,
+        overflowY: "auto",
     },
     rightPanel: {
         width: "60%",
@@ -90,6 +99,7 @@ function ImageApp() {
     const mount = useMounted();
     const abortControllerRef = React.useRef<AbortController | null>(null);
     const [visualOptionsSet, setVisualOptionsSet] = React.useState<VisualOptionSet<BasicOptions>>(basicOptionSet);
+    const { selectedModel } = useImageModelConfig();
 
     const optionsSet = React.useMemo(() => {
         const { getComponent, ...options } = visualOptionsSet;
@@ -223,10 +233,12 @@ function ImageApp() {
 
             const images = await imageService.generateImage(
                 {
-                    kind: "dall-e-3",
+                    kind: selectedModel?.id || "dall-e-3",
+                    provider: selectedModel?.provider || "openai",
                     prompt: enhancedPrompt,
                     size: "1024x1024",
                     quality: "hd",
+                    aspectRatio: "1:1",
                     n: 1,
                 },
                 {
@@ -278,61 +290,67 @@ function ImageApp() {
     }, []);
 
     return (
-        <div className={styles.appContainer}>
-            <header className={styles.header}>
-                <h1 className={styles.headerTitle}>Promptions AI Image Generator</h1>
-                <div className={styles.headerActions}>
-                    <Menu>
-                        <MenuTrigger disableButtonEnhancement>
-                            <Button appearance="subtle" icon={<Options24Regular />} iconPosition="before">
-                                {visualOptionsSet === basicOptionSet ? "Expanded Options" : "Compact Options"}
-                                <ChevronDown24Regular style={{ marginLeft: "8px" }} />
-                            </Button>
-                        </MenuTrigger>
-                        <MenuPopover>
-                            <MenuList>
-                                <MenuItem
-                                    onClick={() => handleOptionSetChange(basicOptionSet)}
-                                    disabled={visualOptionsSet === basicOptionSet}
-                                >
-                                    Expanded Options
-                                </MenuItem>
-                                <MenuItem
-                                    onClick={() => handleOptionSetChange(compactOptionSet)}
-                                    disabled={visualOptionsSet === compactOptionSet}
-                                >
-                                    Compact Options
-                                </MenuItem>
-                            </MenuList>
-                        </MenuPopover>
-                    </Menu>
-                </div>
-            </header>
-
-            <div className={styles.mainContainer}>
-                <div className={styles.leftPanel}>
-                    <ImageInput
-                        prompt={state.prompt}
-                        onPromptChange={handlePromptChange}
-                        onElaborate={handleElaborate}
-                        onGenerate={handleGenerate}
-                        onCancelElaborate={handleCancelElaborate}
-                        onCancelGenerate={handleCancelGenerate}
-                        elaborateLoading={state.optionsLoading}
-                        generateLoading={state.imageLoading}
-                        error={state.error}
-                    />
-
-                    <OptionsPanel
-                        options={state.options}
-                        optionsRenderer={getComponent}
-                        onOptionsChange={handleOptionsChange}
-                        loading={state.optionsLoading}
-                    />
+        <div className={styles.root}>
+            <AppHeader activeMode="image" />
+            <div className={styles.appContainer}>
+                {/* Sidebar with options */}
+                <div className={styles.sidebar}>
+                    <div className={styles.sidebarSection}>
+                        <div className={styles.sidebarTitle}>Display Style</div>
+                        <Menu>
+                            <MenuTrigger disableButtonEnhancement>
+                                <Button appearance="subtle" icon={<Options24Regular />} iconPosition="before">
+                                    {visualOptionsSet === basicOptionSet ? "Expanded Options" : "Compact Options"}
+                                    <ChevronDown24Regular style={{ marginLeft: "8px" }} />
+                                </Button>
+                            </MenuTrigger>
+                            <MenuPopover>
+                                <MenuList>
+                                    <MenuItem
+                                        onClick={() => handleOptionSetChange(basicOptionSet)}
+                                        disabled={visualOptionsSet === basicOptionSet}
+                                    >
+                                        Expanded Options
+                                    </MenuItem>
+                                    <MenuItem
+                                        onClick={() => handleOptionSetChange(compactOptionSet)}
+                                        disabled={visualOptionsSet === compactOptionSet}
+                                    >
+                                        Compact Options
+                                    </MenuItem>
+                                </MenuList>
+                            </MenuPopover>
+                        </Menu>
+                    </div>
+                    <ImageModelSelector />
                 </div>
 
-                <div className={styles.rightPanel}>
-                    <GeneratedImage imageUrl={state.imageUrl} loading={state.imageLoading} prompt={state.prompt} />
+                {/* Main content */}
+                <div className={styles.mainContainer}>
+                    <div className={styles.leftPanel}>
+                        <ImageInput
+                            prompt={state.prompt}
+                            onPromptChange={handlePromptChange}
+                            onElaborate={handleElaborate}
+                            onGenerate={handleGenerate}
+                            onCancelElaborate={handleCancelElaborate}
+                            onCancelGenerate={handleCancelGenerate}
+                            elaborateLoading={state.optionsLoading}
+                            generateLoading={state.imageLoading}
+                            error={state.error}
+                        />
+
+                        <OptionsPanel
+                            options={state.options}
+                            optionsRenderer={getComponent}
+                            onOptionsChange={handleOptionsChange}
+                            loading={state.optionsLoading}
+                        />
+                    </div>
+
+                    <div className={styles.rightPanel}>
+                        <GeneratedImage imageUrl={state.imageUrl} loading={state.imageLoading} prompt={state.prompt} />
+                    </div>
                 </div>
             </div>
         </div>
@@ -357,7 +375,9 @@ function App() {
     return (
         <FluentProvider theme={webLightTheme}>
             <AuthProvider>
-                <AppContent />
+                <ImageModelConfigProvider>
+                    <AppContent />
+                </ImageModelConfigProvider>
             </AuthProvider>
         </FluentProvider>
     );

@@ -30,11 +30,14 @@ export class ImageService {
                 headers: {
                     "Content-Type": "application/json",
                 },
+                credentials: "include",
                 body: JSON.stringify({
                     model: params.kind,
+                    provider: params.provider || "openai",
                     prompt: params.prompt,
                     size: params.size,
                     quality: params.quality,
+                    aspectRatio: params.aspectRatio,
                     n: params.n || 1,
                     response_format: "b64_json",
                 }),

@@ -21,15 +21,22 @@ import {
     compareOptionsParams,
     compareChatParams,
 } from "./types";
-import { compactOptionSet, basicOptionSet, BasicOptions, VisualOptionSet } from "@promptions/promptions-ui";
+import { compactOptionSet, basicOptionSet, BasicOptions, VisualOptionSet, AppHeader } from "@promptions/promptions-ui";
 
 const useStyles = makeStyles({
-    appContainer: {
+    root: {
         height: "100vh",
+        display: "flex",
+        flexDirection: "column",
+        overflow: "hidden",
+    },
+    appContainer: {
+        flex: 1,
         display: "flex",
         flexDirection: "row",
         backgroundColor: tokens.colorNeutralBackground1,
         fontFamily: tokens.fontFamilyBase,
+        overflow: "hidden",
     },
     chatContainer: {
         flex: 1,
@@ -533,28 +540,31 @@ function ChatApp() {
     });
 
     return (
-        <div className={styles.appContainer}>
-            {/* Expanding Sidebar */}
-            <ChatOptionsPanel
-                visualOptionSet={currentOptionSet}
-                onOptionSetChange={handleOptionSetChange}
-                availableOptionSets={availableOptionSets}
-                isVisible={optionsPanelVisible}
-                onToggleVisibility={handleToggleOptionsPanel}
-            />
+        <div className={styles.root}>
+            <AppHeader activeMode="chat" />
+            <div className={styles.appContainer}>
+                {/* Expanding Sidebar */}
+                <ChatOptionsPanel
+                    visualOptionSet={currentOptionSet}
+                    onOptionSetChange={handleOptionSetChange}
+                    availableOptionSets={availableOptionSets}
+                    isVisible={optionsPanelVisible}
+                    onToggleVisibility={handleToggleOptionsPanel}
+                />
 
-            {/* Chat Container */}
-            <div className={styles.chatContainer}>
-                <div className={styles.chatScrollArea} ref={chatContainerRef}>
-                    <ChatPanel
-                        refreshRequest={refreshRequest}
-                        historyState={historyState}
-                        pendingScroll={pendingScroll}
-                        chatContainerRef={chatContainerRef}
-                        styles={styles}
-                        currentOptionSet={currentOptionSet}
-                        promptions={promptions}
-                    />
+                {/* Chat Container */}
+                <div className={styles.chatContainer}>
+                    <div className={styles.chatScrollArea} ref={chatContainerRef}>
+                        <ChatPanel
+                            refreshRequest={refreshRequest}
+                            historyState={historyState}
+                            pendingScroll={pendingScroll}
+                            chatContainerRef={chatContainerRef}
+                            styles={styles}
+                            currentOptionSet={currentOptionSet}
+                            promptions={promptions}
+                        />
+                    </div>
                 </div>
             </div>
         </div>

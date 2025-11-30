@@ -340,41 +340,133 @@ async function handleChatStreamProxy(req, res) {
   }
 }
 
-// Proxy image generation to OpenAI
-async function handleImageProxy(req, res) {
-  if (!OPENAI_API_KEY) {
-    res.writeHead(500, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ error: 'OpenAI API key not configured on server' }));
-    return;
-  }
+// Get image provider config based on provider name
+function getImageProviderConfig(provider, body) {
+  switch (provider) {
+    case 'gemini': {
+      if (!GEMINI_API_KEY) {
+        return { error: 'Gemini API key not configured on server' };
+      }
+      // Gemini Imagen API
+      const model = body.model || 'imagen-3.0-generate-001';
+      const postData = JSON.stringify({
+        instances: [{ prompt: body.prompt }],
+        parameters: {
+          sampleCount: body.n ?? 1,
+          aspectRatio: body.aspectRatio || '1:1',
+        }
+      });
+      return {
+        hostname: 'generativelanguage.googleapis.com',
+        path: `/v1beta/models/${model}:predict?key=${GEMINI_API_KEY}`,
+        postData,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        transformResponse: (data) => {
+          // Transform Gemini response to match OpenAI format
+          try {
+            const parsed = JSON.parse(data);
+            if (parsed.predictions && parsed.predictions.length > 0) {
+              return JSON.stringify({
+                data: parsed.predictions.map(p => ({
+                  b64_json: p.bytesBase64Encoded,
+                }))
+              });
+            }
+          } catch (e) {
+            console.error('Gemini response parse error:', e);
+          }
+          return data;
+        }
+      };
+    }
 
+    case 'openrouter': {
+      if (!OPENROUTER_API_KEY) {
+        return { error: 'OpenRouter API key not configured on server' };
+      }
+      const postData = JSON.stringify({
+        model: body.model || 'openai/dall-e-3',
+        prompt: body.prompt,
+        n: body.n ?? 1,
+        size: body.size || '1024x1024',
+        quality: body.quality || 'standard',
+        response_format: body.response_format || 'b64_json',
+      });
+      return {
+        hostname: 'openrouter.ai',
+        path: '/api/v1/images/generations',
+        postData,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
+          'HTTP-Referer': 'https://promptions.app',
+          'X-Title': 'Promptions',
+        },
+      };
+    }
+
+    case 'openai':
+    default: {
+      if (!OPENAI_API_KEY) {
+        return { error: 'OpenAI API key not configured on server' };
+      }
+      const postData = JSON.stringify({
+        model: body.model || 'dall-e-3',
+        prompt: body.prompt,
+        n: body.n ?? 1,
+        size: body.size || '1024x1024',
+        quality: body.quality || 'standard',
+        response_format: body.response_format || 'b64_json',
+      });
+      return {
+        hostname: 'api.openai.com',
+        path: '/v1/images/generations',
+        postData,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${OPENAI_API_KEY}`,
+        },
+      };
+    }
+  }
+}
+
+// Proxy image generation to multiple providers
+async function handleImageProxy(req, res) {
   try {
     const body = await readBody(req);
+    const provider = body.provider || 'openai';
 
-    const postData = JSON.stringify({
-      model: body.model || 'dall-e-3',
-      prompt: body.prompt,
-      n: body.n ?? 1,
-      size: body.size || '1024x1024',
-      quality: body.quality || 'standard',
-      response_format: body.response_format || 'url',
-    });
+    const config = getImageProviderConfig(provider, body);
+
+    if (config.error) {
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: config.error }));
+      return;
+    }
 
     const options = {
-      hostname: 'api.openai.com',
+      hostname: config.hostname,
       port: 443,
-      path: '/v1/images/generations',
+      path: config.path,
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${OPENAI_API_KEY}`,
-        'Content-Length': Buffer.byteLength(postData),
+        ...config.headers,
+        'Content-Length': Buffer.byteLength(config.postData),
       },
     };
 
     const proxyReq = https.request(options, (proxyRes) => {
-      res.writeHead(proxyRes.statusCode, { 'Content-Type': 'application/json' });
-      proxyRes.pipe(res);
+      let data = '';
+      proxyRes.on('data', chunk => data += chunk);
+      proxyRes.on('end', () => {
+        // Transform response if needed
+        const responseData = config.transformResponse ? config.transformResponse(data) : data;
+        res.writeHead(proxyRes.statusCode, { 'Content-Type': 'application/json' });
+        res.end(responseData);
+      });
     });
 
     proxyReq.on('error', (e) => {
@@ -383,7 +475,7 @@ async function handleImageProxy(req, res) {
       res.end(JSON.stringify({ error: 'Proxy request failed' }));
     });
 
-    proxyReq.write(postData);
+    proxyReq.write(config.postData);
     proxyReq.end();
   } catch (e) {
     console.error('Image proxy error:', e);
