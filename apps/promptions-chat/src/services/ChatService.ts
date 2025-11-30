@@ -1,6 +1,15 @@
+import type { Provider, ModelInfo } from "../config/ModelConfig";
+
 interface ChatMessage {
     role: "user" | "assistant" | "system";
     content: string;
+}
+
+export interface ChatOptions {
+    model?: ModelInfo | null;
+    temperature?: number;
+    maxTokens?: number;
+    signal?: AbortSignal;
 }
 
 // Get the API base URL - use relative path in production (same origin)
@@ -24,21 +33,31 @@ export class ChatService {
     async streamChat(
         messages: ChatMessage[],
         onContent: (content: string, done: boolean) => void,
-        options?: { signal?: AbortSignal },
+        options?: ChatOptions,
     ): Promise<void> {
         console.log(JSON.stringify(messages, null, 2));
 
+        // Determine the endpoint and model based on provider
+        const model = options?.model;
+        const provider = model?.provider || "openai";
+        const modelId = model?.id || "gpt-4.1";
+
+        // Map provider to endpoint
+        const endpoint = this.getEndpoint(provider, true);
+
         try {
-            const response = await fetch(`${this.baseUrl}/api/chat/stream`, {
+            const response = await fetch(`${this.baseUrl}${endpoint}`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
                 },
+                credentials: "include",
                 body: JSON.stringify({
                     messages,
-                    model: "gpt-4.1",
-                    temperature: 0.7,
-                    max_tokens: 1000,
+                    model: modelId,
+                    provider,
+                    temperature: options?.temperature ?? 0.7,
+                    max_tokens: options?.maxTokens ?? 1000,
                 }),
                 signal: options?.signal,
             });
@@ -78,8 +97,8 @@ export class ChatService {
                         }
                         try {
                             const parsed = JSON.parse(data);
-                            const content =
-                                parsed.choices?.[0]?.delta?.content ?? "";
+                            // Handle different response formats
+                            const content = this.extractContent(parsed, provider);
                             if (content) {
                                 accumulatedContent += content;
                                 onContent(accumulatedContent, false);
@@ -98,18 +117,26 @@ export class ChatService {
         }
     }
 
-    async sendMessage(messages: ChatMessage[]): Promise<string> {
+    async sendMessage(messages: ChatMessage[], options?: ChatOptions): Promise<string> {
+        const model = options?.model;
+        const provider = model?.provider || "openai";
+        const modelId = model?.id || "gpt-3.5-turbo";
+
+        const endpoint = this.getEndpoint(provider, false);
+
         try {
-            const response = await fetch(`${this.baseUrl}/api/chat`, {
+            const response = await fetch(`${this.baseUrl}${endpoint}`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
                 },
+                credentials: "include",
                 body: JSON.stringify({
                     messages,
-                    model: "gpt-3.5-turbo",
-                    temperature: 0.7,
-                    max_tokens: 1000,
+                    model: modelId,
+                    provider,
+                    temperature: options?.temperature ?? 0.7,
+                    max_tokens: options?.maxTokens ?? 1000,
                 }),
             });
 
@@ -121,10 +148,51 @@ export class ChatService {
             }
 
             const data = await response.json();
-            return data.choices?.[0]?.message?.content || "No response received";
+            return this.extractMessageContent(data, provider);
         } catch (error) {
             console.error("Error in sendMessage:", error);
             throw error;
         }
+    }
+
+    private getEndpoint(_provider: Provider, stream: boolean): string {
+        // All providers use the same endpoint, server routes based on provider param
+        return stream ? "/api/chat/stream" : "/api/chat";
+    }
+
+    private extractContent(parsed: unknown, provider: Provider): string {
+        const data = parsed as Record<string, unknown>;
+
+        // OpenAI and OpenRouter format
+        if (provider === "openai" || provider === "openrouter") {
+            const choices = data.choices as Array<{ delta?: { content?: string } }> | undefined;
+            return choices?.[0]?.delta?.content ?? "";
+        }
+
+        // Gemini format
+        if (provider === "gemini") {
+            const candidates = data.candidates as Array<{ content?: { parts?: Array<{ text?: string }> } }> | undefined;
+            return candidates?.[0]?.content?.parts?.[0]?.text ?? "";
+        }
+
+        return "";
+    }
+
+    private extractMessageContent(data: unknown, provider: Provider): string {
+        const response = data as Record<string, unknown>;
+
+        // OpenAI and OpenRouter format
+        if (provider === "openai" || provider === "openrouter") {
+            const choices = response.choices as Array<{ message?: { content?: string } }> | undefined;
+            return choices?.[0]?.message?.content || "No response received";
+        }
+
+        // Gemini format
+        if (provider === "gemini") {
+            const candidates = response.candidates as Array<{ content?: { parts?: Array<{ text?: string }> } }> | undefined;
+            return candidates?.[0]?.content?.parts?.[0]?.text || "No response received";
+        }
+
+        return "No response received";
     }
 }

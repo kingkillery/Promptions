@@ -1,5 +1,6 @@
 const http = require('http');
 const https = require('https');
+const crypto = require('crypto');
 const url = require('url');
 const path = require('path');
 const fs = require('fs');
@@ -8,8 +9,65 @@ const PORT = process.env.PORT || 8080;
 const CHAT_DIR = path.join(__dirname, 'chat');
 const IMAGE_DIR = path.join(__dirname, 'image');
 
-// OpenAI API key from Cloud Run secret or environment variable
+// API keys from Cloud Run secrets or environment variables
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
+
+// Authentication credentials from Cloud Run secrets
+const AUTH_USERNAME = process.env.AUTH_USERNAME || 'Nerdsaver';
+const AUTH_PASSWORD = process.env.AUTH_PASSWORD || 'Shot7374';
+
+// Session management (in-memory for simplicity)
+const sessions = new Map();
+const SESSION_DURATION = 7 * 24 * 60 * 60 * 1000; // 7 days
+
+function generateSessionToken() {
+  return crypto.randomBytes(32).toString('hex');
+}
+
+function createSession() {
+  const token = generateSessionToken();
+  sessions.set(token, {
+    createdAt: Date.now(),
+    expiresAt: Date.now() + SESSION_DURATION,
+  });
+  return token;
+}
+
+function validateSession(token) {
+  if (!token) return false;
+  const session = sessions.get(token);
+  if (!session) return false;
+  if (Date.now() > session.expiresAt) {
+    sessions.delete(token);
+    return false;
+  }
+  return true;
+}
+
+function getSessionFromRequest(req) {
+  // Check Authorization header first
+  const authHeader = req.headers.authorization;
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    return authHeader.slice(7);
+  }
+  // Check cookie
+  const cookies = req.headers.cookie || '';
+  const match = cookies.match(/session=([^;]+)/);
+  return match ? match[1] : null;
+}
+
+// Authentication check for protected routes
+function requireAuth(req, res) {
+  const token = getSessionFromRequest(req);
+  if (!validateSession(token)) {
+    res.writeHead(401, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ error: 'Unauthorized', requiresAuth: true }));
+    return false;
+  }
+  return true;
+}
 
 // Security: Prevent path traversal
 function isSafePath(targetPath, rootDir) {
@@ -96,33 +154,120 @@ function readBody(req) {
   });
 }
 
-// Proxy chat completions to OpenAI (non-streaming)
-async function handleChatProxy(req, res) {
-  if (!OPENAI_API_KEY) {
-    res.writeHead(500, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ error: 'OpenAI API key not configured on server' }));
-    return;
-  }
+// Get provider config based on provider name
+function getProviderConfig(provider, body, stream) {
+  switch (provider) {
+    case 'gemini': {
+      if (!GEMINI_API_KEY) {
+        return { error: 'Gemini API key not configured on server' };
+      }
+      // Gemini uses a different message format
+      const contents = body.messages
+        .filter(m => m.role !== 'system')
+        .map(m => ({
+          role: m.role === 'assistant' ? 'model' : 'user',
+          parts: [{ text: m.content }]
+        }));
 
+      // Extract system instruction if present
+      const systemMessage = body.messages.find(m => m.role === 'system');
+
+      const postData = {
+        contents,
+        generationConfig: {
+          temperature: body.temperature ?? 0.7,
+          maxOutputTokens: body.max_tokens ?? 1000,
+        }
+      };
+
+      if (systemMessage) {
+        postData.systemInstruction = { parts: [{ text: systemMessage.content }] };
+      }
+
+      const model = body.model || 'gemini-2.0-flash';
+      const streamSuffix = stream ? ':streamGenerateContent?alt=sse' : ':generateContent';
+
+      return {
+        hostname: 'generativelanguage.googleapis.com',
+        path: `/v1beta/models/${model}${streamSuffix}&key=${GEMINI_API_KEY}`,
+        postData: JSON.stringify(postData),
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      };
+    }
+
+    case 'openrouter': {
+      if (!OPENROUTER_API_KEY) {
+        return { error: 'OpenRouter API key not configured on server' };
+      }
+      const postData = JSON.stringify({
+        model: body.model || 'openai/gpt-4.1',
+        messages: body.messages,
+        temperature: body.temperature ?? 0.7,
+        max_tokens: body.max_tokens ?? 1000,
+        stream: stream,
+      });
+      return {
+        hostname: 'openrouter.ai',
+        path: '/api/v1/chat/completions',
+        postData,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
+          'HTTP-Referer': 'https://promptions.app',
+          'X-Title': 'Promptions',
+        },
+      };
+    }
+
+    case 'openai':
+    default: {
+      if (!OPENAI_API_KEY) {
+        return { error: 'OpenAI API key not configured on server' };
+      }
+      const postData = JSON.stringify({
+        model: body.model || 'gpt-4.1',
+        messages: body.messages,
+        temperature: body.temperature ?? 0.7,
+        max_tokens: body.max_tokens ?? 1000,
+        stream: stream,
+      });
+      return {
+        hostname: 'api.openai.com',
+        path: '/v1/chat/completions',
+        postData,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${OPENAI_API_KEY}`,
+        },
+      };
+    }
+  }
+}
+
+// Proxy chat completions (non-streaming)
+async function handleChatProxy(req, res) {
   try {
     const body = await readBody(req);
+    const provider = body.provider || 'openai';
 
-    const postData = JSON.stringify({
-      model: body.model || 'gpt-4.1',
-      messages: body.messages,
-      temperature: body.temperature ?? 0.7,
-      max_tokens: body.max_tokens ?? 1000,
-    });
+    const config = getProviderConfig(provider, body, false);
+
+    if (config.error) {
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: config.error }));
+      return;
+    }
 
     const options = {
-      hostname: 'api.openai.com',
+      hostname: config.hostname,
       port: 443,
-      path: '/v1/chat/completions',
+      path: config.path,
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${OPENAI_API_KEY}`,
-        'Content-Length': Buffer.byteLength(postData),
+        ...config.headers,
+        'Content-Length': Buffer.byteLength(config.postData),
       },
     };
 
@@ -137,7 +282,7 @@ async function handleChatProxy(req, res) {
       res.end(JSON.stringify({ error: 'Proxy request failed' }));
     });
 
-    proxyReq.write(postData);
+    proxyReq.write(config.postData);
     proxyReq.end();
   } catch (e) {
     console.error('Chat proxy error:', e);
@@ -146,34 +291,28 @@ async function handleChatProxy(req, res) {
   }
 }
 
-// Proxy streaming chat completions to OpenAI
+// Proxy streaming chat completions
 async function handleChatStreamProxy(req, res) {
-  if (!OPENAI_API_KEY) {
-    res.writeHead(500, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ error: 'OpenAI API key not configured on server' }));
-    return;
-  }
-
   try {
     const body = await readBody(req);
+    const provider = body.provider || 'openai';
 
-    const postData = JSON.stringify({
-      model: body.model || 'gpt-4.1',
-      messages: body.messages,
-      temperature: body.temperature ?? 0.7,
-      max_tokens: body.max_tokens ?? 1000,
-      stream: true,
-    });
+    const config = getProviderConfig(provider, body, true);
+
+    if (config.error) {
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: config.error }));
+      return;
+    }
 
     const options = {
-      hostname: 'api.openai.com',
+      hostname: config.hostname,
       port: 443,
-      path: '/v1/chat/completions',
+      path: config.path,
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${OPENAI_API_KEY}`,
-        'Content-Length': Buffer.byteLength(postData),
+        ...config.headers,
+        'Content-Length': Buffer.byteLength(config.postData),
       },
     };
 
@@ -192,7 +331,7 @@ async function handleChatStreamProxy(req, res) {
       res.end(JSON.stringify({ error: 'Proxy request failed' }));
     });
 
-    proxyReq.write(postData);
+    proxyReq.write(config.postData);
     proxyReq.end();
   } catch (e) {
     console.error('Chat stream proxy error:', e);
@@ -253,6 +392,51 @@ async function handleImageProxy(req, res) {
   }
 }
 
+// Handle login
+async function handleLogin(req, res) {
+  try {
+    const body = await readBody(req);
+    const { username, password } = body;
+
+    if (username === AUTH_USERNAME && password === AUTH_PASSWORD) {
+      const token = createSession();
+      res.writeHead(200, {
+        'Content-Type': 'application/json',
+        'Set-Cookie': `session=${token}; Path=/; HttpOnly; SameSite=Strict; Max-Age=${SESSION_DURATION / 1000}`,
+      });
+      res.end(JSON.stringify({ success: true, token }));
+    } else {
+      res.writeHead(401, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Invalid credentials' }));
+    }
+  } catch (e) {
+    console.error('Login error:', e);
+    res.writeHead(400, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ error: e.message }));
+  }
+}
+
+// Handle logout
+async function handleLogout(req, res) {
+  const token = getSessionFromRequest(req);
+  if (token) {
+    sessions.delete(token);
+  }
+  res.writeHead(200, {
+    'Content-Type': 'application/json',
+    'Set-Cookie': 'session=; Path=/; HttpOnly; SameSite=Strict; Max-Age=0',
+  });
+  res.end(JSON.stringify({ success: true }));
+}
+
+// Check auth status
+function handleAuthCheck(req, res) {
+  const token = getSessionFromRequest(req);
+  const isAuthenticated = validateSession(token);
+  res.writeHead(200, { 'Content-Type': 'application/json' });
+  res.end(JSON.stringify({ authenticated: isAuthenticated }));
+}
+
 function routeHandler(req, res) {
   const parsedUrl = url.parse(req.url, true);
   const pathname = parsedUrl.pathname;
@@ -268,16 +452,32 @@ function routeHandler(req, res) {
     return;
   }
 
-  // API Proxy endpoints
+  // Auth endpoints (not protected)
+  if (pathname === '/api/auth/login' && req.method === 'POST') {
+    return handleLogin(req, res);
+  }
+
+  if (pathname === '/api/auth/logout' && req.method === 'POST') {
+    return handleLogout(req, res);
+  }
+
+  if (pathname === '/api/auth/check' && req.method === 'GET') {
+    return handleAuthCheck(req, res);
+  }
+
+  // Protected API Proxy endpoints
   if (pathname === '/api/chat' && req.method === 'POST') {
+    if (!requireAuth(req, res)) return;
     return handleChatProxy(req, res);
   }
 
   if (pathname === '/api/chat/stream' && req.method === 'POST') {
+    if (!requireAuth(req, res)) return;
     return handleChatStreamProxy(req, res);
   }
 
   if (pathname === '/api/images/generate' && req.method === 'POST') {
+    if (!requireAuth(req, res)) return;
     return handleImageProxy(req, res);
   }
 

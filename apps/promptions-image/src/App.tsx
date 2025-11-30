@@ -16,8 +16,9 @@ import { ImageService } from "./services/ImageService";
 import { PromptionsImageService } from "./services/PromptionsImageService";
 import { produce } from "immer";
 import { useMounted } from "./reactUtil";
-import { ImageInput, GeneratedImage, OptionsPanel } from "./components";
+import { ImageInput, GeneratedImage, OptionsPanel, Login } from "./components";
 import { compactOptionSet, basicOptionSet, BasicOptions, Options, VisualOptionSet } from "@promptions/promptions-ui";
+import { AuthProvider, useAuth } from "./auth/AuthContext";
 
 const useStyles = makeStyles({
     appContainer: {
@@ -85,7 +86,7 @@ interface ImageState {
 
 const imageService = new ImageService();
 
-function App() {
+function ImageApp() {
     const mount = useMounted();
     const abortControllerRef = React.useRef<AbortController | null>(null);
     const [visualOptionsSet, setVisualOptionsSet] = React.useState<VisualOptionSet<BasicOptions>>(basicOptionSet);
@@ -277,65 +278,87 @@ function App() {
     }, []);
 
     return (
-        <FluentProvider theme={webLightTheme}>
-            <div className={styles.appContainer}>
-                <header className={styles.header}>
-                    <h1 className={styles.headerTitle}>Promptions AI Image Generator</h1>
-                    <div className={styles.headerActions}>
-                        <Menu>
-                            <MenuTrigger disableButtonEnhancement>
-                                <Button appearance="subtle" icon={<Options24Regular />} iconPosition="before">
-                                    {visualOptionsSet === basicOptionSet ? "Expanded Options" : "Compact Options"}
-                                    <ChevronDown24Regular style={{ marginLeft: "8px" }} />
-                                </Button>
-                            </MenuTrigger>
-                            <MenuPopover>
-                                <MenuList>
-                                    <MenuItem
-                                        onClick={() => handleOptionSetChange(basicOptionSet)}
-                                        disabled={visualOptionsSet === basicOptionSet}
-                                    >
-                                        Expanded Options
-                                    </MenuItem>
-                                    <MenuItem
-                                        onClick={() => handleOptionSetChange(compactOptionSet)}
-                                        disabled={visualOptionsSet === compactOptionSet}
-                                    >
-                                        Compact Options
-                                    </MenuItem>
-                                </MenuList>
-                            </MenuPopover>
-                        </Menu>
-                    </div>
-                </header>
+        <div className={styles.appContainer}>
+            <header className={styles.header}>
+                <h1 className={styles.headerTitle}>Promptions AI Image Generator</h1>
+                <div className={styles.headerActions}>
+                    <Menu>
+                        <MenuTrigger disableButtonEnhancement>
+                            <Button appearance="subtle" icon={<Options24Regular />} iconPosition="before">
+                                {visualOptionsSet === basicOptionSet ? "Expanded Options" : "Compact Options"}
+                                <ChevronDown24Regular style={{ marginLeft: "8px" }} />
+                            </Button>
+                        </MenuTrigger>
+                        <MenuPopover>
+                            <MenuList>
+                                <MenuItem
+                                    onClick={() => handleOptionSetChange(basicOptionSet)}
+                                    disabled={visualOptionsSet === basicOptionSet}
+                                >
+                                    Expanded Options
+                                </MenuItem>
+                                <MenuItem
+                                    onClick={() => handleOptionSetChange(compactOptionSet)}
+                                    disabled={visualOptionsSet === compactOptionSet}
+                                >
+                                    Compact Options
+                                </MenuItem>
+                            </MenuList>
+                        </MenuPopover>
+                    </Menu>
+                </div>
+            </header>
 
-                <div className={styles.mainContainer}>
-                    <div className={styles.leftPanel}>
-                        <ImageInput
-                            prompt={state.prompt}
-                            onPromptChange={handlePromptChange}
-                            onElaborate={handleElaborate}
-                            onGenerate={handleGenerate}
-                            onCancelElaborate={handleCancelElaborate}
-                            onCancelGenerate={handleCancelGenerate}
-                            elaborateLoading={state.optionsLoading}
-                            generateLoading={state.imageLoading}
-                            error={state.error}
-                        />
+            <div className={styles.mainContainer}>
+                <div className={styles.leftPanel}>
+                    <ImageInput
+                        prompt={state.prompt}
+                        onPromptChange={handlePromptChange}
+                        onElaborate={handleElaborate}
+                        onGenerate={handleGenerate}
+                        onCancelElaborate={handleCancelElaborate}
+                        onCancelGenerate={handleCancelGenerate}
+                        elaborateLoading={state.optionsLoading}
+                        generateLoading={state.imageLoading}
+                        error={state.error}
+                    />
 
-                        <OptionsPanel
-                            options={state.options}
-                            optionsRenderer={getComponent}
-                            onOptionsChange={handleOptionsChange}
-                            loading={state.optionsLoading}
-                        />
-                    </div>
+                    <OptionsPanel
+                        options={state.options}
+                        optionsRenderer={getComponent}
+                        onOptionsChange={handleOptionsChange}
+                        loading={state.optionsLoading}
+                    />
+                </div>
 
-                    <div className={styles.rightPanel}>
-                        <GeneratedImage imageUrl={state.imageUrl} loading={state.imageLoading} prompt={state.prompt} />
-                    </div>
+                <div className={styles.rightPanel}>
+                    <GeneratedImage imageUrl={state.imageUrl} loading={state.imageLoading} prompt={state.prompt} />
                 </div>
             </div>
+        </div>
+    );
+}
+
+function AppContent() {
+    const { isAuthenticated, isLoading } = useAuth();
+
+    if (isLoading) {
+        return null;
+    }
+
+    if (!isAuthenticated) {
+        return <Login />;
+    }
+
+    return <ImageApp />;
+}
+
+function App() {
+    return (
+        <FluentProvider theme={webLightTheme}>
+            <AuthProvider>
+                <AppContent />
+            </AuthProvider>
         </FluentProvider>
     );
 }

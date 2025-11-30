@@ -2,6 +2,7 @@ import React from "react";
 import { makeStyles, tokens, Text, Card, CardHeader, Button, RadioGroup, Radio } from "@fluentui/react-components";
 import { Settings24Regular } from "@fluentui/react-icons";
 import { VisualOptionSet, BasicOptions } from "@promptions/promptions-ui";
+import { ModelSelector } from "./ModelSelector";
 
 const useStyles = makeStyles({
     sidebar: {
@@ -131,6 +132,8 @@ export const ChatOptionsPanel: React.FC<ChatOptionsPanelProps> = ({
                         </Text>
                     </div>
                 </Card>
+
+                <ModelSelector />
             </div>
         </div>
     );

@@ -5,7 +5,9 @@ import { ChatService } from "./services/ChatService";
 import { ChatMessage, PromptionsService } from "./services/PromptionsService";
 import { current, produce } from "immer";
 import { depsEqual, useMounted, usePreviousIf } from "./reactUtil";
-import { ChatInput, ChatHistory, ChatOptionsPanel } from "./components";
+import { ChatInput, ChatHistory, ChatOptionsPanel, Login } from "./components";
+import { AuthProvider, useAuth } from "./auth/AuthContext";
+import { ModelConfigProvider, useModelConfig } from "./config/ModelConfig";
 import {
     State,
     RefreshParams,
@@ -225,6 +227,7 @@ const ChatPanel: React.FC<{
 }> = (props) => {
     const { historyState, refreshRequest, pendingScroll, chatContainerRef, styles, currentOptionSet, promptions } =
         props;
+    const { selectedModel } = useModelConfig();
     const penultMessage = historyState.get.at(-2);
     const lastMessage = historyState.get.at(-1);
     const penultRequest = penultMessage?.role === "user" ? penultMessage : undefined;
@@ -410,7 +413,7 @@ const ChatPanel: React.FC<{
                         (content, done) => {
                             updateHistoryContent(content, done, historySet);
                         },
-                        { signal: abort.signal },
+                        { signal: abort.signal, model: selectedModel },
                     );
                 } catch (error) {
                     if (error instanceof OpenAI.APIUserAbortError) {
@@ -467,7 +470,7 @@ const ChatPanel: React.FC<{
     );
 };
 
-function App() {
+function ChatApp() {
     const mount = useMounted();
     const [history, setChatHistory] = React.useState<HistoryMessage[]>([]);
     const [refreshRequestId, setRefreshRequestId] = React.useState<string>("");
@@ -530,32 +533,56 @@ function App() {
     });
 
     return (
-        <FluentProvider theme={webLightTheme}>
-            <div className={styles.appContainer}>
-                {/* Expanding Sidebar */}
-                <ChatOptionsPanel
-                    visualOptionSet={currentOptionSet}
-                    onOptionSetChange={handleOptionSetChange}
-                    availableOptionSets={availableOptionSets}
-                    isVisible={optionsPanelVisible}
-                    onToggleVisibility={handleToggleOptionsPanel}
-                />
+        <div className={styles.appContainer}>
+            {/* Expanding Sidebar */}
+            <ChatOptionsPanel
+                visualOptionSet={currentOptionSet}
+                onOptionSetChange={handleOptionSetChange}
+                availableOptionSets={availableOptionSets}
+                isVisible={optionsPanelVisible}
+                onToggleVisibility={handleToggleOptionsPanel}
+            />
 
-                {/* Chat Container */}
-                <div className={styles.chatContainer}>
-                    <div className={styles.chatScrollArea} ref={chatContainerRef}>
-                        <ChatPanel
-                            refreshRequest={refreshRequest}
-                            historyState={historyState}
-                            pendingScroll={pendingScroll}
-                            chatContainerRef={chatContainerRef}
-                            styles={styles}
-                            currentOptionSet={currentOptionSet}
-                            promptions={promptions}
-                        />
-                    </div>
+            {/* Chat Container */}
+            <div className={styles.chatContainer}>
+                <div className={styles.chatScrollArea} ref={chatContainerRef}>
+                    <ChatPanel
+                        refreshRequest={refreshRequest}
+                        historyState={historyState}
+                        pendingScroll={pendingScroll}
+                        chatContainerRef={chatContainerRef}
+                        styles={styles}
+                        currentOptionSet={currentOptionSet}
+                        promptions={promptions}
+                    />
                 </div>
             </div>
+        </div>
+    );
+}
+
+function AppContent() {
+    const { isAuthenticated, isLoading } = useAuth();
+
+    if (isLoading) {
+        return null;
+    }
+
+    if (!isAuthenticated) {
+        return <Login />;
+    }
+
+    return <ChatApp />;
+}
+
+function App() {
+    return (
+        <FluentProvider theme={webLightTheme}>
+            <AuthProvider>
+                <ModelConfigProvider>
+                    <AppContent />
+                </ModelConfigProvider>
+            </AuthProvider>
         </FluentProvider>
     );
 }
