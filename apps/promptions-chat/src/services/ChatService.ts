@@ -10,6 +10,35 @@ export interface ChatOptions {
     temperature?: number;
     maxTokens?: number;
     signal?: AbortSignal;
+    /** Number of retry attempts for failed requests (default: 3) */
+    maxRetries?: number;
+    /** Base delay in ms between retries, doubles each attempt (default: 1000) */
+    retryDelay?: number;
+}
+
+/** Error types that are safe to retry */
+const RETRYABLE_STATUS_CODES = [408, 429, 500, 502, 503, 504];
+
+/** Check if an error is retryable */
+function isRetryableError(error: unknown, status?: number): boolean {
+    // Don't retry if user aborted
+    if (error instanceof DOMException && error.name === "AbortError") {
+        return false;
+    }
+    // Retry on network errors
+    if (error instanceof TypeError && error.message.includes("fetch")) {
+        return true;
+    }
+    // Retry on specific HTTP status codes
+    if (status && RETRYABLE_STATUS_CODES.includes(status)) {
+        return true;
+    }
+    return false;
+}
+
+/** Sleep for a given duration */
+function sleep(ms: number): Promise<void> {
+    return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 // Get the API base URL - use relative path in production (same origin)
@@ -28,6 +57,68 @@ export class ChatService {
 
     constructor() {
         this.baseUrl = getApiBaseUrl();
+    }
+
+    /**
+     * Execute a fetch request with exponential backoff retry logic.
+     * @param fetchFn - Function that performs the fetch
+     * @param options - Retry configuration options
+     * @returns The successful response
+     */
+    private async fetchWithRetry(
+        fetchFn: () => Promise<Response>,
+        options: {
+            maxRetries?: number;
+            retryDelay?: number;
+            signal?: AbortSignal;
+            onRetry?: (attempt: number, error: Error) => void;
+        } = {},
+    ): Promise<Response> {
+        const maxRetries = options.maxRetries ?? 3;
+        const baseDelay = options.retryDelay ?? 1000;
+        let lastError: Error | null = null;
+
+        for (let attempt = 0; attempt <= maxRetries; attempt++) {
+            try {
+                // Check if aborted before attempting
+                if (options.signal?.aborted) {
+                    throw new DOMException("Request aborted", "AbortError");
+                }
+
+                const response = await fetchFn();
+
+                // If response is ok, return it
+                if (response.ok) {
+                    return response;
+                }
+
+                // Check if we should retry this status code
+                if (!isRetryableError(null, response.status) || attempt === maxRetries) {
+                    return response; // Return the error response for caller to handle
+                }
+
+                // Extract error for logging
+                const errorData = await response.clone().json().catch(() => ({}));
+                lastError = new Error(errorData.error || `HTTP ${response.status}`);
+
+            } catch (error) {
+                lastError = error instanceof Error ? error : new Error(String(error));
+
+                // Don't retry non-retryable errors
+                if (!isRetryableError(error) || attempt === maxRetries) {
+                    throw lastError;
+                }
+            }
+
+            // Calculate delay with exponential backoff and jitter
+            const delay = baseDelay * Math.pow(2, attempt) + Math.random() * 500;
+            console.warn(`Request failed, retrying in ${Math.round(delay)}ms (attempt ${attempt + 1}/${maxRetries})...`);
+            options.onRetry?.(attempt + 1, lastError!);
+
+            await sleep(delay);
+        }
+
+        throw lastError || new Error("Request failed after retries");
     }
 
     async streamChat(
@@ -125,20 +216,27 @@ export class ChatService {
         const endpoint = this.getEndpoint(provider, false);
 
         try {
-            const response = await fetch(`${this.baseUrl}${endpoint}`, {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
+            const response = await this.fetchWithRetry(
+                () =>
+                    fetch(`${this.baseUrl}${endpoint}`, {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json",
+                        },
+                        credentials: "include",
+                        body: JSON.stringify({
+                            messages,
+                            model: modelId,
+                            provider,
+                            temperature: options?.temperature ?? 0.7,
+                            max_tokens: options?.maxTokens ?? 1000,
+                        }),
+                    }),
+                {
+                    maxRetries: options?.maxRetries,
+                    retryDelay: options?.retryDelay,
                 },
-                credentials: "include",
-                body: JSON.stringify({
-                    messages,
-                    model: modelId,
-                    provider,
-                    temperature: options?.temperature ?? 0.7,
-                    max_tokens: options?.maxTokens ?? 1000,
-                }),
-            });
+            );
 
             if (!response.ok) {
                 const errorData = await response.json().catch(() => ({}));

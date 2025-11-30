@@ -80,11 +80,11 @@ export const ChatHistory: React.FC<ChatHistoryProps> = ({ history, historySet, c
 
     if (history.length === 0) {
         return (
-            <div className={styles.chatRow}>
+            <div className={styles.chatRow} role="region" aria-label="Welcome message">
                 <div className={styles.spacerColumn}></div>
                 <div className={styles.messagesColumn}>
                     <div className={styles.welcomeContainer}>
-                        <div className={styles.welcomeIcon}>🤖</div>
+                        <div className={styles.welcomeIcon} aria-hidden="true">🤖</div>
                         <h2 className={styles.welcomeTitle}>Welcome to Promptions AI Chat</h2>
                         <p className={styles.welcomeSubtitle}>Start a conversation by typing a message below.</p>
                     </div>
@@ -166,5 +166,9 @@ export const ChatHistory: React.FC<ChatHistoryProps> = ({ history, historySet, c
         }
     }
 
-    return <>{messageElements}</>;
+    return (
+        <div role="log" aria-label="Chat conversation" aria-live="polite">
+            {messageElements}
+        </div>
+    );
 };

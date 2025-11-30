@@ -1,13 +1,14 @@
-# Use Node.js 18 LTS as base image
-FROM node:18-alpine AS base
+# =============================================================================
+# Stage 1: Dependencies - Install all dependencies for caching
+# =============================================================================
+FROM node:18-alpine AS deps
 
 # Install corepack to enable yarn package management
 RUN corepack enable
 
-# Set working directory
 WORKDIR /app
 
-# Copy package.json, yarn.lock, and yarn config for better caching
+# Copy package files first for better layer caching
 COPY package.json yarn.lock .yarnrc.yml ./
 
 # Copy all workspace package.json files (required for yarn workspaces)
@@ -16,36 +17,68 @@ COPY apps/promptions-image/package.json ./apps/promptions-image/
 COPY packages/promptions-llm/package.json ./packages/promptions-llm/
 COPY packages/promptions-ui/package.json ./packages/promptions-ui/
 
-# Install dependencies (now yarn can see all workspaces)
-RUN yarn install
+# Install dependencies with frozen lockfile for reproducibility
+RUN yarn install --immutable
 
-# Copy the rest of the code
-COPY . .
+# =============================================================================
+# Stage 2: Builder - Build all packages and applications
+# =============================================================================
+FROM node:18-alpine AS builder
+
+RUN corepack enable
+
+WORKDIR /app
+
+# Copy dependencies from deps stage
+COPY --from=deps /app/node_modules ./node_modules
+COPY --from=deps /app/.yarn ./.yarn
+COPY --from=deps /app/package.json ./package.json
+COPY --from=deps /app/yarn.lock ./yarn.lock
+COPY --from=deps /app/.yarnrc.yml ./.yarnrc.yml
+
+# Copy workspace package.json files
+COPY --from=deps /app/apps/promptions-chat/package.json ./apps/promptions-chat/
+COPY --from=deps /app/apps/promptions-image/package.json ./apps/promptions-image/
+COPY --from=deps /app/packages/promptions-llm/package.json ./packages/promptions-llm/
+COPY --from=deps /app/packages/promptions-ui/package.json ./packages/promptions-ui/
+
+# Copy source code
+COPY apps ./apps
+COPY packages ./packages
+COPY tsconfig.json nx.json ./
 
 # Build all packages and applications
 RUN yarn build
 
-# Production stage
+# =============================================================================
+# Stage 3: Production - Minimal runtime image
+# =============================================================================
 FROM node:18-alpine AS production
 
-# Install corepack
-RUN corepack enable
+# Add non-root user for security
+RUN addgroup --system --gid 1001 nodejs && \
+    adduser --system --uid 1001 promptions
 
-# Set working directory
 WORKDIR /app
 
-# Copy built applications from the base stage
-COPY --from=base /app/apps/promptions-chat/dist /app/chat
-COPY --from=base /app/apps/promptions-image/dist /app/image
+# Copy only the built assets and server
+COPY --from=builder --chown=promptions:nodejs /app/apps/promptions-chat/dist ./chat
+COPY --from=builder --chown=promptions:nodejs /app/apps/promptions-image/dist ./image
+COPY --chown=promptions:nodejs server.js ./
 
-# Copy the Node.js server script
-COPY server.js ./
+# Switch to non-root user
+USER promptions
 
-# Expose port 80
-EXPOSE 80
+# Expose port (configurable via PORT env var)
+EXPOSE 8080
 
-# Set environment variable for the default port
-ENV PORT=80
+# Environment variables with secure defaults
+ENV PORT=8080 \
+    NODE_ENV=production
+
+# Health check - verify server is responding
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD node -e "require('http').get('http://localhost:' + (process.env.PORT || 8080) + '/api/auth/check', (r) => process.exit(r.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))"
 
 # Start the server
 CMD ["node", "server.js"]

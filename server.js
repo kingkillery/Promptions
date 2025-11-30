@@ -14,9 +14,16 @@ const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
 
-// Authentication credentials from Cloud Run secrets
-const AUTH_USERNAME = process.env.AUTH_USERNAME || 'Nerdsaver';
-const AUTH_PASSWORD = process.env.AUTH_PASSWORD || 'Shot7374';
+// Authentication credentials from Cloud Run secrets (REQUIRED - no defaults)
+const AUTH_USERNAME = process.env.AUTH_USERNAME;
+const AUTH_PASSWORD = process.env.AUTH_PASSWORD;
+
+// Validate required authentication credentials on startup
+if (!AUTH_USERNAME || !AUTH_PASSWORD) {
+  console.error('SECURITY ERROR: AUTH_USERNAME and AUTH_PASSWORD environment variables are required.');
+  console.error('Please set these environment variables before starting the server.');
+  process.exit(1);
+}
 
 // Session management (in-memory for simplicity)
 const sessions = new Map();

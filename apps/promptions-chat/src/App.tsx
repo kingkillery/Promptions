@@ -5,7 +5,7 @@ import { ChatService } from "./services/ChatService";
 import { ChatMessage, PromptionsService } from "./services/PromptionsService";
 import { current, produce } from "immer";
 import { depsEqual, useMounted, usePreviousIf } from "./reactUtil";
-import { ChatInput, ChatHistory, ChatOptionsPanel, Login } from "./components";
+import { ChatInput, ChatHistory, ChatOptionsPanel, Login, ErrorBoundary, PromptExport } from "./components";
 import { AuthProvider, useAuth } from "./auth/AuthContext";
 import { ModelConfigProvider, useModelConfig } from "./config/ModelConfig";
 import {
@@ -472,6 +472,8 @@ const ChatPanel: React.FC<{
                         historyState={historyState}
                     />
                 </div>
+                {/* Export button */}
+                <PromptExport history={historyState.get} />
             </div>
         </div>
     );
@@ -588,11 +590,13 @@ function AppContent() {
 function App() {
     return (
         <FluentProvider theme={webLightTheme}>
-            <AuthProvider>
-                <ModelConfigProvider>
-                    <AppContent />
-                </ModelConfigProvider>
-            </AuthProvider>
+            <ErrorBoundary>
+                <AuthProvider>
+                    <ModelConfigProvider>
+                        <AppContent />
+                    </ModelConfigProvider>
+                </AuthProvider>
+            </ErrorBoundary>
         </FluentProvider>
     );
 }

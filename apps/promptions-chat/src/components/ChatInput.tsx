@@ -67,7 +67,7 @@ export const ChatInput: React.FC<ChatInputProps> = (props) => {
     };
 
     return (
-        <div className={styles.containerWrapper}>
+        <div className={styles.containerWrapper} role="form" aria-label="Chat message input">
             <div className={styles.inputContainer}>
                 <Textarea
                     value={text}
@@ -79,6 +79,8 @@ export const ChatInput: React.FC<ChatInputProps> = (props) => {
                     onChange={(_, data) => setText(data.value)}
                     onKeyDown={handleKeyDown}
                     resize="vertical"
+                    aria-label="Message input"
+                    aria-describedby="chat-disclaimer"
                 />
                 <Button
                     appearance="primary"
@@ -87,6 +89,7 @@ export const ChatInput: React.FC<ChatInputProps> = (props) => {
                     className={styles.sendButton}
                     icon={<Send24Regular />}
                     title="Send message"
+                    aria-label="Send message"
                 />
                 <Button
                     appearance="subtle"
@@ -96,10 +99,11 @@ export const ChatInput: React.FC<ChatInputProps> = (props) => {
                     className={styles.clearButton}
                     icon={<Delete24Regular />}
                     title="Clear chat"
+                    aria-label="Clear chat history"
                 />
             </div>
-            <div className={styles.disclaimerText}>
-                <Info16Regular />
+            <div id="chat-disclaimer" className={styles.disclaimerText} role="note">
+                <Info16Regular aria-hidden="true" />
                 AI generated responses should be verified before taking action.
             </div>
         </div>

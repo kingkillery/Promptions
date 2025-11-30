@@ -42,7 +42,7 @@ export const AssistantMessage: React.FC<AssistantMessageProps> = ({ message }) =
     );
 
     return (
-        <div className={styles.messageContainer}>
+        <div className={styles.messageContainer} role="article" aria-label="AI assistant response">
             <Card className={styles.messageCard}>
                 {/* Render markdown content */}
                 {message.content || !message.contentDone ? (
@@ -51,14 +51,14 @@ export const AssistantMessage: React.FC<AssistantMessageProps> = ({ message }) =
                             <MarkdownRenderer content={message.content} />
                         </div>
                     ) : (
-                        <div className={styles.thinkingContainer}>
+                        <div className={styles.thinkingContainer} aria-busy="true">
                             <Skeleton
                                 style={{ display: "flex", flexDirection: "column", gap: "5px" }}
-                                aria-label="Loading Content"
+                                aria-label="Loading response"
                             >
-                                <SkeletonItem style={{ width: skeletonWidths[0] }} />
-                                <SkeletonItem style={{ width: skeletonWidths[1] }} />
-                                <SkeletonItem style={{ width: skeletonWidths[2] }} />
+                                <SkeletonItem style={{ width: skeletonWidths[0] }} aria-hidden="true" />
+                                <SkeletonItem style={{ width: skeletonWidths[1] }} aria-hidden="true" />
+                                <SkeletonItem style={{ width: skeletonWidths[2] }} aria-hidden="true" />
                             </Skeleton>
                         </div>
                     )

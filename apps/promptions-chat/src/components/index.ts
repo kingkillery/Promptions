@@ -8,3 +8,5 @@ export { ChatHistory } from "./ChatHistory";
 export { ChatOptionsPanel } from "./ChatOptionsPanel";
 export { Login } from "./Login";
 export { ModelSelector } from "./ModelSelector";
+export { ErrorBoundary, ErrorFallback } from "./ErrorBoundary";
+export { PromptExport } from "./PromptExport";

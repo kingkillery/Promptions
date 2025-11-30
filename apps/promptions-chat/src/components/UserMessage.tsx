@@ -43,7 +43,7 @@ export const UserMessage: React.FC<UserMessageProps> = ({ message }) => {
     const styles = useStyles();
 
     return (
-        <div className={styles.messageContainer}>
+        <div className={styles.messageContainer} role="article" aria-label="Your message">
             <Card className={styles.messageCard}>
                 <Text className={styles.messageContent}>{message.content}</Text>
             </Card>
