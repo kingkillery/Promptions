@@ -16,13 +16,18 @@ export interface ChatOptions {
     retryDelay?: number;
 }
 
-/** Error types that are safe to retry */
+/** Error types that are safe to retry (excludes 401 auth errors) */
 const RETRYABLE_STATUS_CODES = [408, 429, 500, 502, 503, 504];
+const NON_RETRYABLE_STATUS_CODES = [400, 401, 403, 404];
 
 /** Check if an error is retryable */
 function isRetryableError(error: unknown, status?: number): boolean {
     // Don't retry if user aborted
     if (error instanceof DOMException && error.name === "AbortError") {
+        return false;
+    }
+    // Don't retry non-retryable status codes (auth errors, not found, etc.)
+    if (status && NON_RETRYABLE_STATUS_CODES.includes(status)) {
         return false;
     }
     // Retry on network errors
@@ -155,8 +160,13 @@ export class ChatService {
 
             if (!response.ok) {
                 const errorData = await response.json().catch(() => ({}));
+                if (response.status === 401) {
+                    throw new Error("Session expired. Please log in again.");
+                }
                 throw new Error(
-                    errorData.error || `HTTP error! status: ${response.status}`,
+                    typeof errorData.error === 'string'
+                        ? errorData.error
+                        : `HTTP error! status: ${response.status}`,
                 );
             }
 
@@ -240,8 +250,13 @@ export class ChatService {
 
             if (!response.ok) {
                 const errorData = await response.json().catch(() => ({}));
+                if (response.status === 401) {
+                    throw new Error("Session expired. Please log in again.");
+                }
                 throw new Error(
-                    errorData.error || `HTTP error! status: ${response.status}`,
+                    typeof errorData.error === 'string'
+                        ? errorData.error
+                        : `HTTP error! status: ${response.status}`,
                 );
             }
 
