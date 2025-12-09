@@ -11,6 +11,8 @@ node_modules/
 # Build outputs
 dist/
 build/
+chat/
+image/
 *.tsbuildinfo
 
 # Environment variables

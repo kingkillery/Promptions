@@ -30,7 +30,14 @@
       "Bash(\"C:\\Program Files (x86)\\Google\\Cloud SDK\\google-cloud-sdk\\bin\\gcloud.cmd\" builds submit --config=cloudbuild.yaml --project=gen-lang-client-0038902874 --substitutions=COMMIT_SHA=models-v1 \"C:\\Users\\prest\\Desktop\\Desktop_Projects\\Cool-Tools\\Promptions\")",
       "Bash(\"C:\\Program Files (x86)\\Google\\Cloud SDK\\google-cloud-sdk\\bin\\gcloud.cmd\" builds log ef8c334c-5d68-40a7-b599-3f26b11b315e --project=gen-lang-client-0038902874)",
       "Bash(\"C:\\Program Files (x86)\\Google\\Cloud SDK\\google-cloud-sdk\\bin\\gcloud.cmd\" builds submit --config=cloudbuild.yaml --project=gen-lang-client-0038902874 --substitutions=COMMIT_SHA=scroll-fix \"C:\\Users\\prest\\Desktop\\Desktop_Projects\\Cool-Tools\\Promptions\")",
-      "Bash(\"C:\\Program Files (x86)\\Google\\Cloud SDK\\google-cloud-sdk\\bin\\gcloud.cmd\" builds log 59fcec99-3f86-484f-96ef-8e3777de4737 --project=gen-lang-client-0038902874)"
+      "Bash(\"C:\\Program Files (x86)\\Google\\Cloud SDK\\google-cloud-sdk\\bin\\gcloud.cmd\" builds log 59fcec99-3f86-484f-96ef-8e3777de4737 --project=gen-lang-client-0038902874)",
+      "Bash(yarn dev)",
+      "Bash($env:AUTH_USERNAME=\"admin\")",
+      "Bash($env:AUTH_PASSWORD=\"test123\")",
+      "Bash(node:*)",
+      "Bash(AUTH_USERNAME=admin AUTH_PASSWORD=test123 node:*)",
+      "Bash(find:*)",
+      "Bash(\"C:\\Program Files (x86)\\Google\\Cloud SDK\\google-cloud-sdk\\bin\\gcloud.cmd\" secrets versions access latest --secret=AUTH_USERNAME --project=gen-lang-client-0038902874)"
     ],
     "deny": [],
     "ask": []
