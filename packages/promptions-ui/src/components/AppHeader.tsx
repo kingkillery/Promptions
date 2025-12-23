@@ -7,6 +7,7 @@ import {
     Text,
 } from "@fluentui/react-components";
 import { Chat24Regular, Image24Regular } from "@fluentui/react-icons";
+import { ApiKeysSettings, ApiKeys } from "./ApiKeysSettings";
 
 const useStyles = makeStyles({
     header: {
@@ -39,15 +40,27 @@ const useStyles = makeStyles({
     tab: {
         minWidth: "100px",
     },
+    rightSection: {
+        display: "flex",
+        alignItems: "center",
+        gap: tokens.spacingHorizontalS,
+    },
 });
 
 export type AppMode = "chat" | "image";
 
 export interface AppHeaderProps {
     activeMode: AppMode;
+    apiKeys?: ApiKeys;
+    onApiKeysChange?: (keys: ApiKeys) => void;
+    serverHasKeys?: {
+        openai: boolean;
+        gemini: boolean;
+        openrouter: boolean;
+    };
 }
 
-export function AppHeader({ activeMode }: AppHeaderProps) {
+export function AppHeader({ activeMode, apiKeys, onApiKeysChange, serverHasKeys }: AppHeaderProps) {
     const styles = useStyles();
 
     const handleTabSelect = (_event: unknown, data: { value: unknown }) => {
@@ -85,6 +98,15 @@ export function AppHeader({ activeMode }: AppHeaderProps) {
                     Image
                 </Tab>
             </TabList>
+            {onApiKeysChange && (
+                <div className={styles.rightSection}>
+                    <ApiKeysSettings
+                        apiKeys={apiKeys || {}}
+                        onSave={onApiKeysChange}
+                        serverHasKeys={serverHasKeys}
+                    />
+                </div>
+            )}
         </header>
     );
 }

@@ -8,6 +8,7 @@ import { depsEqual, useMounted, usePreviousIf } from "./reactUtil";
 import { ChatInput, ChatHistory, ChatOptionsPanel, Login, ErrorBoundary, PromptExport } from "./components";
 import { AuthProvider, useAuth } from "./auth/AuthContext";
 import { ModelConfigProvider, useModelConfig } from "./config/ModelConfig";
+import { ApiKeysProvider, useApiKeys } from "./context/ApiKeysContext";
 import {
     State,
     RefreshParams,
@@ -235,6 +236,7 @@ const ChatPanel: React.FC<{
     const { historyState, refreshRequest, pendingScroll, chatContainerRef, styles, currentOptionSet, promptions } =
         props;
     const { selectedModel } = useModelConfig();
+    const { apiKeys } = useApiKeys();
     const penultMessage = historyState.get.at(-2);
     const lastMessage = historyState.get.at(-1);
     const penultRequest = penultMessage?.role === "user" ? penultMessage : undefined;
@@ -420,7 +422,7 @@ const ChatPanel: React.FC<{
                         (content, done) => {
                             updateHistoryContent(content, done, historySet);
                         },
-                        { signal: abort.signal, model: selectedModel },
+                        { signal: abort.signal, model: selectedModel, apiKeys },
                     );
                 } catch (error) {
                     if (error instanceof OpenAI.APIUserAbortError) {
@@ -496,6 +498,7 @@ function ChatApp() {
     const [currentOptionSet, setCurrentOptionSet] = React.useState<VisualOptionSet<BasicOptions>>(defaultOptionSet);
     const [optionsPanelVisible, setOptionsPanelVisible] = React.useState(false);
     const styles = useStyles();
+    const { apiKeys, setApiKeys, serverHasKeys } = useApiKeys();
 
     // Create promptions service instance with current option set
     const promptions = React.useMemo(() => {
@@ -553,7 +556,12 @@ function ChatApp() {
 
     return (
         <div className={styles.root}>
-            <AppHeader activeMode="chat" />
+            <AppHeader
+                activeMode="chat"
+                apiKeys={apiKeys}
+                onApiKeysChange={setApiKeys}
+                serverHasKeys={serverHasKeys}
+            />
             <div className={styles.appContainer}>
                 {/* Expanding Sidebar */}
                 <ChatOptionsPanel
@@ -602,9 +610,11 @@ function App() {
         <FluentProvider theme={webLightTheme}>
             <ErrorBoundary>
                 <AuthProvider>
-                    <ModelConfigProvider>
-                        <AppContent />
-                    </ModelConfigProvider>
+                    <ApiKeysProvider>
+                        <ModelConfigProvider>
+                            <AppContent />
+                        </ModelConfigProvider>
+                    </ApiKeysProvider>
                 </AuthProvider>
             </ErrorBoundary>
         </FluentProvider>

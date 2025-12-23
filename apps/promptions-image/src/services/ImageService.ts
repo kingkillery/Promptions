@@ -1,5 +1,11 @@
 import { ImageGenerationParams, GeneratedImage } from "../types";
 
+export interface ApiKeys {
+    openai?: string;
+    gemini?: string;
+    openrouter?: string;
+}
+
 // Get the API base URL - use relative path in production (same origin)
 // or localhost in development
 function getApiBaseUrl(): string {
@@ -20,7 +26,7 @@ export class ImageService {
 
     async generateImage(
         params: ImageGenerationParams,
-        options?: { signal?: AbortSignal },
+        options?: { signal?: AbortSignal; apiKeys?: ApiKeys },
     ): Promise<GeneratedImage[]> {
         try {
             console.log("Generating image with params:", params);
@@ -40,6 +46,7 @@ export class ImageService {
                     aspectRatio: params.aspectRatio,
                     n: params.n || 1,
                     response_format: "b64_json",
+                    apiKeys: options?.apiKeys,
                 }),
                 signal: options?.signal,
             });
@@ -74,7 +81,7 @@ export class ImageService {
     async streamChat(
         messages: Array<{ role: "user" | "assistant" | "system"; content: string }>,
         onContent: (content: string, done: boolean) => void,
-        options?: { signal?: AbortSignal },
+        options?: { signal?: AbortSignal; apiKeys?: ApiKeys },
     ): Promise<void> {
         try {
             const response = await fetch(`${this.baseUrl}/api/chat/stream`, {
@@ -82,11 +89,13 @@ export class ImageService {
                 headers: {
                     "Content-Type": "application/json",
                 },
+                credentials: "include",
                 body: JSON.stringify({
                     messages,
                     model: "gpt-4.1",
                     temperature: 0.7,
                     max_tokens: 1000,
+                    apiKeys: options?.apiKeys,
                 }),
                 signal: options?.signal,
             });

@@ -20,6 +20,7 @@ import { ImageInput, GeneratedImage, OptionsPanel, Login, ImageModelSelector } f
 import { compactOptionSet, basicOptionSet, BasicOptions, Options, VisualOptionSet, AppHeader } from "@promptions/promptions-ui";
 import { AuthProvider, useAuth } from "./auth/AuthContext";
 import { ImageModelConfigProvider, useImageModelConfig } from "./config/ImageModelConfig";
+import { ApiKeysProvider, useApiKeys } from "./context/ApiKeysContext";
 
 const useStyles = makeStyles({
     root: {
@@ -100,6 +101,7 @@ function ImageApp() {
     const abortControllerRef = React.useRef<AbortController | null>(null);
     const [visualOptionsSet, setVisualOptionsSet] = React.useState<VisualOptionSet<BasicOptions>>(basicOptionSet);
     const { selectedModel } = useImageModelConfig();
+    const { apiKeys, setApiKeys, serverHasKeys } = useApiKeys();
 
     const optionsSet = React.useMemo(() => {
         const { getComponent, ...options } = visualOptionsSet;
@@ -243,6 +245,7 @@ function ImageApp() {
                 },
                 {
                     signal: abortController.signal,
+                    apiKeys,
                 },
             );
 
@@ -291,7 +294,12 @@ function ImageApp() {
 
     return (
         <div className={styles.root}>
-            <AppHeader activeMode="image" />
+            <AppHeader
+                activeMode="image"
+                apiKeys={apiKeys}
+                onApiKeysChange={setApiKeys}
+                serverHasKeys={serverHasKeys}
+            />
             <div className={styles.appContainer}>
                 {/* Sidebar with options */}
                 <div className={styles.sidebar}>
@@ -375,9 +383,11 @@ function App() {
     return (
         <FluentProvider theme={webLightTheme}>
             <AuthProvider>
-                <ImageModelConfigProvider>
-                    <AppContent />
-                </ImageModelConfigProvider>
+                <ApiKeysProvider>
+                    <ImageModelConfigProvider>
+                        <AppContent />
+                    </ImageModelConfigProvider>
+                </ApiKeysProvider>
             </AuthProvider>
         </FluentProvider>
     );

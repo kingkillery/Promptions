@@ -162,11 +162,16 @@ function readBody(req) {
 }
 
 // Get provider config based on provider name
+// Supports user-provided API keys via request body, falling back to server defaults
 function getProviderConfig(provider, body, stream) {
+  // Extract user-provided API keys from request body
+  const userApiKeys = body.apiKeys || {};
+
   switch (provider) {
     case 'gemini': {
-      if (!GEMINI_API_KEY) {
-        return { error: 'Gemini API key not configured on server' };
+      const apiKey = userApiKeys.gemini || GEMINI_API_KEY;
+      if (!apiKey) {
+        return { error: 'Gemini API key not configured. Please add your API key in Settings.' };
       }
       // Gemini uses a different message format
       const contents = body.messages
@@ -196,7 +201,7 @@ function getProviderConfig(provider, body, stream) {
 
       return {
         hostname: 'generativelanguage.googleapis.com',
-        path: `/v1beta/models/${model}${streamSuffix}&key=${GEMINI_API_KEY}`,
+        path: `/v1beta/models/${model}${streamSuffix}&key=${apiKey}`,
         postData: JSON.stringify(postData),
         headers: {
           'Content-Type': 'application/json',
@@ -205,8 +210,9 @@ function getProviderConfig(provider, body, stream) {
     }
 
     case 'openrouter': {
-      if (!OPENROUTER_API_KEY) {
-        return { error: 'OpenRouter API key not configured on server' };
+      const apiKey = userApiKeys.openrouter || OPENROUTER_API_KEY;
+      if (!apiKey) {
+        return { error: 'OpenRouter API key not configured. Please add your API key in Settings.' };
       }
       const postData = JSON.stringify({
         model: body.model || 'openai/gpt-4.1',
@@ -221,7 +227,7 @@ function getProviderConfig(provider, body, stream) {
         postData,
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
+          'Authorization': `Bearer ${apiKey}`,
           'HTTP-Referer': 'https://promptions.app',
           'X-Title': 'Promptions',
         },
@@ -230,8 +236,9 @@ function getProviderConfig(provider, body, stream) {
 
     case 'openai':
     default: {
-      if (!OPENAI_API_KEY) {
-        return { error: 'OpenAI API key not configured on server' };
+      const apiKey = userApiKeys.openai || OPENAI_API_KEY;
+      if (!apiKey) {
+        return { error: 'OpenAI API key not configured. Please add your API key in Settings.' };
       }
       const postData = JSON.stringify({
         model: body.model || 'gpt-4.1',
@@ -246,7 +253,7 @@ function getProviderConfig(provider, body, stream) {
         postData,
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${OPENAI_API_KEY}`,
+          'Authorization': `Bearer ${apiKey}`,
         },
       };
     }
@@ -348,11 +355,16 @@ async function handleChatStreamProxy(req, res) {
 }
 
 // Get image provider config based on provider name
+// Supports user-provided API keys via request body, falling back to server defaults
 function getImageProviderConfig(provider, body) {
+  // Extract user-provided API keys from request body
+  const userApiKeys = body.apiKeys || {};
+
   switch (provider) {
     case 'gemini': {
-      if (!GEMINI_API_KEY) {
-        return { error: 'Gemini API key not configured on server' };
+      const apiKey = userApiKeys.gemini || GEMINI_API_KEY;
+      if (!apiKey) {
+        return { error: 'Gemini API key not configured. Please add your API key in Settings.' };
       }
       // Gemini Imagen API
       const model = body.model || 'imagen-3.0-generate-001';
@@ -365,7 +377,7 @@ function getImageProviderConfig(provider, body) {
       });
       return {
         hostname: 'generativelanguage.googleapis.com',
-        path: `/v1beta/models/${model}:predict?key=${GEMINI_API_KEY}`,
+        path: `/v1beta/models/${model}:predict?key=${apiKey}`,
         postData,
         headers: {
           'Content-Type': 'application/json',
@@ -390,8 +402,9 @@ function getImageProviderConfig(provider, body) {
     }
 
     case 'openrouter': {
-      if (!OPENROUTER_API_KEY) {
-        return { error: 'OpenRouter API key not configured on server' };
+      const apiKey = userApiKeys.openrouter || OPENROUTER_API_KEY;
+      if (!apiKey) {
+        return { error: 'OpenRouter API key not configured. Please add your API key in Settings.' };
       }
       const postData = JSON.stringify({
         model: body.model || 'openai/dall-e-3',
@@ -407,7 +420,7 @@ function getImageProviderConfig(provider, body) {
         postData,
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
+          'Authorization': `Bearer ${apiKey}`,
           'HTTP-Referer': 'https://promptions.app',
           'X-Title': 'Promptions',
         },
@@ -416,8 +429,9 @@ function getImageProviderConfig(provider, body) {
 
     case 'openai':
     default: {
-      if (!OPENAI_API_KEY) {
-        return { error: 'OpenAI API key not configured on server' };
+      const apiKey = userApiKeys.openai || OPENAI_API_KEY;
+      if (!apiKey) {
+        return { error: 'OpenAI API key not configured. Please add your API key in Settings.' };
       }
       const postData = JSON.stringify({
         model: body.model || 'dall-e-3',
@@ -433,7 +447,7 @@ function getImageProviderConfig(provider, body) {
         postData,
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${OPENAI_API_KEY}`,
+          'Authorization': `Bearer ${apiKey}`,
         },
       };
     }
@@ -536,6 +550,18 @@ function handleAuthCheck(req, res) {
   res.end(JSON.stringify({ authenticated: isAuthenticated }));
 }
 
+// Check which API keys are configured on the server
+function handleApiKeysCheck(req, res) {
+  res.writeHead(200, { 'Content-Type': 'application/json' });
+  res.end(JSON.stringify({
+    serverHasKeys: {
+      openai: !!OPENAI_API_KEY,
+      gemini: !!GEMINI_API_KEY,
+      openrouter: !!OPENROUTER_API_KEY,
+    }
+  }));
+}
+
 function routeHandler(req, res) {
   const parsedUrl = url.parse(req.url, true);
   const pathname = parsedUrl.pathname;
@@ -562,6 +588,11 @@ function routeHandler(req, res) {
 
   if (pathname === '/api/auth/check' && req.method === 'GET') {
     return handleAuthCheck(req, res);
+  }
+
+  if (pathname === '/api/keys/check' && req.method === 'GET') {
+    if (!requireAuth(req, res)) return;
+    return handleApiKeysCheck(req, res);
   }
 
   // Protected API Proxy endpoints

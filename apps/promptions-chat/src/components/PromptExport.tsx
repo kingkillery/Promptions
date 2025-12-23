@@ -147,29 +147,32 @@ interface ExportedMessage {
 function formatOptions(options: BasicOptions): ExportedMessage["options"] {
     if (!options || options.isEmpty()) return undefined;
 
-    return options.options.map((opt) => {
-        let selectedValue: string;
-        let availableOptions: string[];
+    return options.options
+        .filter((opt) => opt.kind !== "canvas")
+        .map((opt) => {
+            let selectedValue: string;
+            let availableOptions: string[];
 
-        if (opt.kind === "single-select") {
-            const val = Array.isArray(opt.value) ? opt.value[0] : opt.value;
-            selectedValue = opt.options[val] || val;
-            availableOptions = Object.values(opt.options);
-        } else if (opt.kind === "binary-select") {
-            selectedValue = opt.options[opt.value];
-            availableOptions = [opt.options.enabled, opt.options.disabled];
-        } else {
-            const vals = Array.isArray(opt.value) ? opt.value : [opt.value];
-            selectedValue = vals.map((v) => opt.options[v] || v).join(", ");
-            availableOptions = Object.values(opt.options);
-        }
+            if (opt.kind === "single-select") {
+                const val = Array.isArray(opt.value) ? opt.value[0] : opt.value;
+                selectedValue = opt.options[val] || val;
+                availableOptions = Object.values(opt.options);
+            } else if (opt.kind === "binary-select") {
+                selectedValue = opt.options[opt.value];
+                availableOptions = [opt.options.enabled, opt.options.disabled];
+            } else {
+                // multi-select
+                const vals = Array.isArray(opt.value) ? opt.value : [opt.value];
+                selectedValue = vals.map((v: string) => opt.options[v] || v).join(", ");
+                availableOptions = Object.values(opt.options);
+            }
 
-        return {
-            label: opt.label,
-            selectedValue,
-            availableOptions,
-        };
-    });
+            return {
+                label: opt.label,
+                selectedValue,
+                availableOptions,
+            };
+        });
 }
 
 /**

@@ -5,6 +5,12 @@ interface ChatMessage {
     content: string;
 }
 
+export interface ApiKeys {
+    openai?: string;
+    gemini?: string;
+    openrouter?: string;
+}
+
 export interface ChatOptions {
     model?: ModelInfo | null;
     temperature?: number;
@@ -14,6 +20,8 @@ export interface ChatOptions {
     maxRetries?: number;
     /** Base delay in ms between retries, doubles each attempt (default: 1000) */
     retryDelay?: number;
+    /** User-provided API keys (optional, falls back to server keys) */
+    apiKeys?: ApiKeys;
 }
 
 /** Error types that are safe to retry (excludes 401 auth errors) */
@@ -154,6 +162,7 @@ export class ChatService {
                     provider,
                     temperature: options?.temperature ?? 0.7,
                     max_tokens: options?.maxTokens ?? 1000,
+                    apiKeys: options?.apiKeys,
                 }),
                 signal: options?.signal,
             });
@@ -240,6 +249,7 @@ export class ChatService {
                             provider,
                             temperature: options?.temperature ?? 0.7,
                             max_tokens: options?.maxTokens ?? 1000,
+                            apiKeys: options?.apiKeys,
                         }),
                     }),
                 {
