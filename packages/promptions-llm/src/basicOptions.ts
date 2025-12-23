@@ -1,5 +1,5 @@
 import * as z from "zod";
-import { OptionSet, Options } from "./types";
+import { OptionSet, Options, OptionsMetadata } from "./types";
 
 const multiOptionControl = z.object({
     kind: z.literal("multi-select"),
@@ -25,7 +25,14 @@ const binaryOptionControl = z.object({
     value: z.union([z.literal("enabled"), z.literal("disabled")]),
 });
 
-const optionControl = z.union([multiOptionControl, singleOptionControl, binaryOptionControl]);
+const canvasControl = z.object({
+    kind: z.literal("canvas"),
+    label: z.string(),
+    code: z.string(),
+    setup: z.string().optional(),
+});
+
+const optionControl = z.union([multiOptionControl, singleOptionControl, binaryOptionControl, canvasControl]);
 const optionControlList = z.array(optionControl);
 type OptionControlList = z.infer<typeof optionControlList>;
 
@@ -33,10 +40,18 @@ type OptionControlList = z.infer<typeof optionControlList>;
 export type MultiOptionControl = z.infer<typeof multiOptionControl>;
 export type SingleOptionControl = z.infer<typeof singleOptionControl>;
 export type BinaryOptionControl = z.infer<typeof binaryOptionControl>;
+export type CanvasControl = z.infer<typeof canvasControl>;
 export type OptionControl = z.infer<typeof optionControl>;
 
 export class BasicOptions implements Options {
-    constructor(readonly options: OptionControlList) {}
+    constructor(
+        readonly options: OptionControlList,
+        readonly metadata: OptionsMetadata = {}
+    ) { }
+
+    getMetadata(): OptionsMetadata {
+        return this.metadata;
+    }
 
     prettyPrint(): string {
         return this.options
@@ -51,11 +66,14 @@ export class BasicOptions implements Options {
                     return `Binary Select: ${control.label} with options [${Object.entries(control.options)
                         .map(([key, label]) => `${key}: ${label}`)
                         .join(", ")}] - Selected: ${selectedLabel}`;
-                } else {
+                } else if (control.kind === "canvas") {
+                    return `Canvas: ${control.label} - [Custom Code Content]`;
+                } else if (control.kind === "multi-select") {
                     const selectedValues = Array.isArray(control.value) ? control.value : [control.value];
-                    const selectedLabels = selectedValues.map((val) => control.options[val] || val);
+                    const selectedLabels = selectedValues.map((val: string) => (control.options as Record<string, string>)[val] || val);
                     return `Multi Select: ${control.label} with options [${Object.keys(control.options).join(", ")}] - Selected: ${selectedLabels.join(", ")}`;
                 }
+                return "";
             })
             .join("\n\n");
     }
@@ -71,11 +89,14 @@ export class BasicOptions implements Options {
                     return `What is your choice for ${control.label}? Options are: ${Object.entries(control.options)
                         .map(([key, label]) => `${key}: ${label}`)
                         .join(", ")}`;
-                } else {
+                } else if (control.kind === "canvas") {
+                    return `Can you generate a custom UI for ${control.label}?`;
+                } else if (control.kind === "multi-select") {
                     return `What are your choices for ${control.label}? Options are: ${Object.entries(control.options)
                         .map(([key, label]) => `${key}: ${label}`)
                         .join(", ")}`;
                 }
+                return "";
             })
             .join("\n");
 
@@ -89,11 +110,14 @@ export class BasicOptions implements Options {
                     const selectedValue = control.value;
                     const selectedLabel = control.options[selectedValue] || selectedValue;
                     return `${control.label}: ${selectedLabel}`;
-                } else {
+                } else if (control.kind === "canvas") {
+                    return `${control.label}: [Custom Implementation]`;
+                } else if (control.kind === "multi-select") {
                     const selectedValues = Array.isArray(control.value) ? control.value : [control.value];
-                    const selectedLabels = selectedValues.map((val) => control.options[val] || val);
+                    const selectedLabels = selectedValues.map((val: string) => (control.options as Record<string, string>)[val] || val);
                     return `${control.label}: ${selectedLabels.join(", ")}`;
                 }
+                return "";
             })
             .join("\n");
 
@@ -113,6 +137,27 @@ export class BasicOptions implements Options {
 }
 
 const schemaString: string = `\`\`\`typescript
+interface Options {
+  /** 
+   * Internal thought process before generating UI.
+   * Explain your plan, interpreting user intent.
+   */
+  thought?: string;
+  
+  /** 
+   * Preferred layout for this response.
+   * - sidebar: Standard side panel
+   * - main: Main content area
+   * - full: Full screen overlay
+   */
+  layout?: "sidebar" | "main" | "full";
+  
+  /** 
+   * The actual interactive components.
+   */
+  options: OptionControl[];
+}
+
 interface SingleOptionControl {
   kind: "single-select";
   label: string;
@@ -137,9 +182,14 @@ interface BinaryOptionControl {
   value: "enabled" | "disabled"; // Must be either "enabled" or "disabled"
 }
 
-type OptionControl = SingleOptionControl | MultiOptionControl | BinaryOptionControl;
+interface CanvasControl {
+  kind: "canvas";
+  label: string;
+  code: string; // Raw HTML/JS/CSS content
+  setup?: string; // Optional initialization script
+}
 
-type OptionControlList = OptionControl[];
+type OptionControl = SingleOptionControl | MultiOptionControl | BinaryOptionControl | CanvasControl;
 \`\`\``;
 
 export const basicOptionSet: OptionSet<BasicOptions> = {
@@ -148,7 +198,18 @@ export const basicOptionSet: OptionSet<BasicOptions> = {
         try {
             const parsed = JSON.parse(value);
 
-            // First try to parse as the original format
+            // 1. Try new object format with metadata
+            if (parsed && typeof parsed === "object" && !Array.isArray(parsed) && (parsed.options || parsed.thought || parsed.layout)) {
+                const optionsResult = optionControlList.safeParse(parsed.options || []);
+                if (optionsResult.success) {
+                    return new BasicOptions(optionsResult.data, {
+                        thought: parsed.thought,
+                        layout: parsed.layout
+                    });
+                }
+            }
+
+            // 2. Try original array format
             const originalResult = optionControlList.safeParse(parsed);
             if (originalResult.success) {
                 return new BasicOptions(originalResult.data);

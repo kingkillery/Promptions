@@ -1,7 +1,14 @@
+export interface OptionsMetadata {
+    thought?: string;
+    layout?: "sidebar" | "main" | "full";
+    [key: string]: any;
+}
+
 export interface Options {
     prettyPrint(): string;
     prettyPrintAsConversation?(): { question: string; answer: string };
     isEmpty(): boolean;
+    getMetadata?(): OptionsMetadata;
 }
 
 export interface OptionSet<T extends Options> {

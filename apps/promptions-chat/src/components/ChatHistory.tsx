@@ -71,9 +71,16 @@ interface ChatHistoryProps {
     history: HistoryMessage[];
     historySet: (fn: (prev: HistoryMessage[]) => void) => void;
     currentOptionSet: VisualOptionSet<BasicOptions>;
+    onRefreshOptions: (messageId: string) => void;
+    onInteract?: (message: string) => void;
 }
 
-export const ChatHistory: React.FC<ChatHistoryProps> = ({ history, historySet, currentOptionSet }) => {
+export const ChatHistory: React.FC<ChatHistoryProps> = ({
+    history,
+    historySet,
+    currentOptionSet,
+    onInteract,
+}) => {
     const styles = useStyles();
 
     const OptionRenderer = currentOptionSet.getComponent();
@@ -145,6 +152,12 @@ export const ChatHistory: React.FC<ChatHistoryProps> = ({ history, historySet, c
                                                 msg.options = updatedOptions as BasicOptions;
                                             }
                                         });
+
+                                        // Only trigger interaction if it's the latest message
+                                        if (message.id === latestAssistantId && onInteract) {
+                                            const diff = (updatedOptions as BasicOptions).prettyPrint();
+                                            onInteract(`[Interaction: User modulated the UI. Current state: ${diff}]`);
+                                        }
                                     }}
                                     disabled={message.id !== latestAssistantId}
                                 />

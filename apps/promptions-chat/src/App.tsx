@@ -177,9 +177,9 @@ const getOptionsParams = (
 ): OptionsParams | undefined => {
     return penultRequest && lastResponse
         ? {
-              message: penultRequest.content,
-              prevHistory: prevHistory,
-          }
+            message: penultRequest.content,
+            prevHistory: prevHistory,
+        }
         : undefined;
 };
 
@@ -192,10 +192,10 @@ const getChatParams = (
 ): ChatParams | undefined => {
     return penultRequest && lastResponse && lastResponse.optionsDone && !refreshRequestId
         ? {
-              message: penultRequest.content,
-              inlineOptions: lastResponse.options,
-              prevHistory: prevHistory,
-          }
+            message: penultRequest.content,
+            inlineOptions: lastResponse.options,
+            prevHistory: prevHistory,
+        }
         : undefined;
 };
 
@@ -455,11 +455,21 @@ const ChatPanel: React.FC<{
         });
     };
 
+    const handleInteract = (message: string) => {
+        send(message);
+    };
+
     return (
         <div className={styles.chatPanel}>
             {/* Messages container without scrolling */}
             <div className={styles.messagesContainer}>
-                <ChatHistory history={historyState.get} historySet={historySet} currentOptionSet={currentOptionSet} />
+                <ChatHistory
+                    history={historyState.get}
+                    historySet={historySet}
+                    currentOptionSet={currentOptionSet}
+                    onRefreshOptions={refreshRequest.set as any}
+                    onInteract={handleInteract}
+                />
             </div>
             {/* Input container anchored to bottom */}
             <div className={styles.inputContainer}>
