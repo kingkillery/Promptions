@@ -40,7 +40,9 @@
       "Bash(\"C:\\Program Files (x86)\\Google\\Cloud SDK\\google-cloud-sdk\\bin\\gcloud.cmd\" secrets versions access latest --secret=AUTH_USERNAME --project=gen-lang-client-0038902874)",
       "Bash(\"C:\\Program Files (x86)\\Google\\Cloud SDK\\google-cloud-sdk\\bin\\gcloud.cmd\" builds submit --config=cloudbuild.yaml --project=gen-lang-client-0038902874 --substitutions=COMMIT_SHA=password-update \"C:\\Users\\prest\\Desktop\\Desktop_Projects\\Cool-Tools\\Promptions\")",
       "Bash(cat:*)",
-      "Bash(yarn add:*)"
+      "Bash(yarn add:*)",
+      "Bash(\"C:\\\\Program Files \\(x86\\)\\\\Google\\\\Cloud SDK\\\\google-cloud-sdk\\\\bin\\\\gcloud.cmd\" builds log 897cce67-c3cf-43cf-b8f6-5812499c86b3 --project=gen-lang-client-0038902874)",
+      "Bash(\"C:\\\\Program Files \\(x86\\)\\\\Google\\\\Cloud SDK\\\\google-cloud-sdk\\\\bin\\\\gcloud.cmd\" builds submit --config=cloudbuild.yaml --project=gen-lang-client-0038902874 --substitutions=COMMIT_SHA=a2ui-fsm-v2 \"C:\\\\Users\\\\prest\\\\Desktop\\\\Desktop_Projects\\\\Cool-Tools\\\\Promptions\")"
     ],
     "deny": [],
     "ask": []

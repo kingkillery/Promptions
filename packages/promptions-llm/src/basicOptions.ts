@@ -4,14 +4,14 @@ import { OptionSet, Options, OptionsMetadata } from "./types";
 const multiOptionControl = z.object({
     kind: z.literal("multi-select"),
     label: z.string(),
-    options: z.record(z.string()),
+    options: z.record(z.string(), z.string()),
     value: z.union([z.string(), z.array(z.string())]),
 });
 
 const singleOptionControl = z.object({
     kind: z.literal("single-select"),
     label: z.string(),
-    options: z.record(z.string()),
+    options: z.record(z.string(), z.string()),
     value: z.union([z.string(), z.tuple([z.string()])]),
 });
 
