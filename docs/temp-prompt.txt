@@ -1,0 +1,44 @@
+﻿# Prompts - Generative UI Implementation Plan
+
+## Priority 1: State Management Upgrade (Foundational)
+- Replace boolean useState patterns with Finite State Machines
+- Implement useReducer for simple async flows
+- Add XState for complex AI streaming orchestration
+  - Guards to prevent race conditions
+  - Entry/exit actions for cleanup
+  - Atomic context updates
+
+## Priority 2: Component Registry System (Tambo-style)
+- Create component registry with Zod schemas
+- Implement TamboProvider wrapper
+- Define Generative Components (one-off: charts, summaries)
+- Define Interactable Components (persistent: carts, boards)
+- Add useTamboThread for progressive prop streaming
+
+## Priority 3: A2UI Declarative Protocol Layer
+- Define JSON schema for component descriptions
+- Create catalog of pre-approved native components
+- Implement streaming message parser
+- Add client-side rendering engine
+- Secure by design - only registered components render
+
+## Priority 4: Streaming UX Improvements
+- Handle race conditions (cancel/queue new requests)
+- Network failure recovery with partial data
+- User interruption handling (cancel button)
+- Conditional retry logic enforcement
+
+## Priority 5: Direct Code Generation (Google-style)
+- Build 3K-word system prompt framework
+- Create post-processor pipeline:
+  - Syntax fixing (HTML/CSS/JS)
+  - API key injection
+  - Error boundary injection
+- Add html-react-parser for rendering
+- Implement sandboxing for security
+
+## Quick Wins
+1. XState machine for chat streaming state
+2. Simple component registry for common widgets
+3. Post-processor for common syntax errors
+
