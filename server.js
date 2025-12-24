@@ -354,6 +354,372 @@ async function handleChatStreamProxy(req, res) {
   }
 }
 
+function buildA2UISystemPrompt(components) {
+  const allowed = Array.isArray(components)
+    ? components
+        .map((c) => {
+          const name = typeof c?.name === 'string' ? c.name : '';
+          const desc = typeof c?.description === 'string' ? c.description : '';
+          const category = typeof c?.category === 'string' ? c.category : '';
+          return name ? `- ${name}${category ? ` (${category})` : ''}${desc ? `: ${desc}` : ''}` : null;
+        })
+        .filter(Boolean)
+        .join('\n')
+    : '';
+
+  return `You are an API that emits UI using the A2UI protocol.
+
+Output format:
+- Output ONLY newline-delimited JSON (NDJSON).
+- Every line MUST be a single JSON object.
+- Do NOT wrap output in markdown fences, arrays, or extra text.
+
+Each line must match one of these shapes:
+{"type":"component","data":{"id":"...","type":"<AllowedComponentType>","props":{},"layout":{},"style":{},"children":[]}}
+{"type":"update","id":"<componentId>","props":{}}
+{"type":"remove","id":"<componentId>"}
+{"type":"error","message":"...","recoverable":false}
+
+Rules:
+- Use ONLY allowed component types listed below.
+- Generate stable, unique component ids (e.g. "ui-root", "ui-1", "ui-2").
+- Keep props JSON-serializable.
+- Keep EACH JSON object on ONE line (no pretty-print).
+
+Allowed components:
+${allowed || '- (none provided)'}
+`;
+}
+
+function extractStreamText(provider, parsed) {
+  // OpenAI / OpenRouter
+  if (provider === 'openai' || provider === 'openrouter') {
+    return parsed?.choices?.[0]?.delta?.content ?? '';
+  }
+
+  // Gemini
+  if (provider === 'gemini') {
+    return parsed?.candidates?.[0]?.content?.parts?.[0]?.text ?? '';
+  }
+
+  return '';
+}
+
+function buildA2UIActionPrompt(action, components) {
+  const allowed = Array.isArray(components)
+    ? components
+        .map((c) => {
+          const name = typeof c?.name === 'string' ? c.name : '';
+          const desc = typeof c?.description === 'string' ? c.description : '';
+          const category = typeof c?.category === 'string' ? c.category : '';
+          return name ? `- ${name}${category ? ` (${category})` : ''}${desc ? `: ${desc}` : ''}` : null;
+        })
+        .filter(Boolean)
+        .join('\n')
+    : '';
+
+  return `You are an API that updates UI based on user actions using the A2UI protocol.
+
+A user action was triggered:
+- Component ID: ${action.componentId}
+- Action type: ${action.type}
+- Payload: ${JSON.stringify(action.payload || {})}
+
+Output format:
+- Output ONLY newline-delimited JSON (NDJSON).
+- Every line MUST be a single JSON object.
+- Do NOT wrap output in markdown fences, arrays, or extra text.
+
+Each line must match one of these shapes:
+{"type":"component","data":{"id":"...","type":"<AllowedComponentType>","props":{},"layout":{},"style":{},"children":[]}}
+{"type":"update","id":"<componentId>","props":{}}
+{"type":"remove","id":"<componentId>"}
+{"type":"error","message":"...","recoverable":false}
+
+Rules:
+- Respond to the action by updating, adding, or removing components as appropriate.
+- Use ONLY allowed component types listed below.
+- Keep EACH JSON object on ONE line (no pretty-print).
+
+Allowed components:
+${allowed || '- (none provided)'}
+`;
+}
+
+// A2UI endpoint - streams NDJSON messages describing a UI.
+async function handleA2UI(req, res) {
+  try {
+    const body = await readBody(req);
+
+    // Action with streaming response - bi-directional A2UI
+    if (body && body.action && body.components) {
+      const provider = body.provider || 'openai';
+      const action = body.action;
+
+      const actionPrompt = buildA2UIActionPrompt(action, body.components);
+
+      const llmBody = {
+        ...body,
+        temperature: body.temperature ?? 0.2,
+        max_tokens: body.max_tokens ?? 800,
+        messages: [
+          { role: 'system', content: actionPrompt },
+          { role: 'user', content: `Handle this ${action.type} action on component ${action.componentId}` },
+        ],
+      };
+
+      const config = getProviderConfig(provider, llmBody, true);
+
+      if (config.error) {
+        res.writeHead(500, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: config.error }));
+        return;
+      }
+
+      res.writeHead(200, {
+        'Content-Type': 'application/x-ndjson; charset=utf-8',
+        'Cache-Control': 'no-cache',
+        'Connection': 'keep-alive',
+        'X-Accel-Buffering': 'no',
+      });
+
+      const options = {
+        hostname: config.hostname,
+        port: 443,
+        path: config.path,
+        method: 'POST',
+        headers: {
+          ...config.headers,
+          'Content-Length': Buffer.byteLength(config.postData),
+        },
+      };
+
+      let sseBuffer = '';
+      let outputBuffer = '';
+
+      const proxyReq = https.request(options, (proxyRes) => {
+        proxyRes.setEncoding('utf8');
+
+        proxyRes.on('data', (chunk) => {
+          sseBuffer += chunk;
+          const lines = sseBuffer.split('\n');
+          sseBuffer = lines.pop() || '';
+
+          for (const line of lines) {
+            const trimmed = line.trim();
+            if (!trimmed.startsWith('data:')) continue;
+
+            const data = trimmed.slice(5).trim();
+            if (!data) continue;
+            if (data === '[DONE]') {
+              if (outputBuffer.includes('\n')) {
+                const outLines = outputBuffer.split('\n');
+                outputBuffer = outLines.pop() || '';
+                for (const outLine of outLines) {
+                  const candidate = outLine.trim();
+                  if (candidate) res.write(candidate + '\n');
+                }
+              }
+              res.end();
+              return;
+            }
+
+            let parsed;
+            try {
+              parsed = JSON.parse(data);
+            } catch {
+              continue;
+            }
+
+            const delta = extractStreamText(provider, parsed);
+            if (!delta) continue;
+
+            outputBuffer += delta;
+
+            while (outputBuffer.includes('\n')) {
+              const idx = outputBuffer.indexOf('\n');
+              const candidate = outputBuffer.slice(0, idx).trim();
+              outputBuffer = outputBuffer.slice(idx + 1);
+
+              if (!candidate) continue;
+
+              try {
+                JSON.parse(candidate);
+                res.write(candidate + '\n');
+              } catch {
+                outputBuffer = candidate + '\n' + outputBuffer;
+                break;
+              }
+            }
+          }
+        });
+
+        proxyRes.on('end', () => {
+          res.end();
+        });
+      });
+
+      req.on('close', () => {
+        proxyReq.destroy();
+      });
+
+      proxyReq.on('error', (e) => {
+        console.error('A2UI action proxy error:', e);
+        if (!res.headersSent) {
+          res.writeHead(500, { 'Content-Type': 'application/json' });
+        }
+        res.end(JSON.stringify({ error: 'A2UI action proxy request failed' }));
+      });
+
+      proxyReq.write(config.postData);
+      proxyReq.end();
+      return;
+    }
+
+    // Action-only posts (fire-and-forget, no components provided)
+    if (body && body.action) {
+      res.writeHead(204);
+      res.end();
+      return;
+    }
+
+    const provider = body.provider || 'openai';
+    const message = typeof body.message === 'string' ? body.message : '';
+
+    if (!message) {
+      res.writeHead(400, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Missing "message"' }));
+      return;
+    }
+
+    const systemPrompt = buildA2UISystemPrompt(body.components);
+
+    const llmBody = {
+      ...body,
+      temperature: body.temperature ?? 0.2,
+      max_tokens: body.max_tokens ?? 1200,
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: message },
+      ],
+    };
+
+    const config = getProviderConfig(provider, llmBody, true);
+
+    if (config.error) {
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: config.error }));
+      return;
+    }
+
+    res.writeHead(200, {
+      'Content-Type': 'application/x-ndjson; charset=utf-8',
+      'Cache-Control': 'no-cache',
+      'Connection': 'keep-alive',
+      'X-Accel-Buffering': 'no',
+    });
+
+    const options = {
+      hostname: config.hostname,
+      port: 443,
+      path: config.path,
+      method: 'POST',
+      headers: {
+        ...config.headers,
+        'Content-Length': Buffer.byteLength(config.postData),
+      },
+    };
+
+    let sseBuffer = '';
+    let outputBuffer = '';
+
+    const proxyReq = https.request(options, (proxyRes) => {
+      proxyRes.setEncoding('utf8');
+
+      proxyRes.on('data', (chunk) => {
+        sseBuffer += chunk;
+        const lines = sseBuffer.split('\n');
+        sseBuffer = lines.pop() || '';
+
+        for (const line of lines) {
+          const trimmed = line.trim();
+          if (!trimmed.startsWith('data:')) continue;
+
+          const data = trimmed.slice(5).trim();
+          if (!data) continue;
+          if (data === '[DONE]') {
+            // Flush any remaining complete lines
+            if (outputBuffer.includes('\n')) {
+              const outLines = outputBuffer.split('\n');
+              outputBuffer = outLines.pop() || '';
+              for (const outLine of outLines) {
+                const candidate = outLine.trim();
+                if (candidate) res.write(candidate + '\n');
+              }
+            }
+            res.end();
+            return;
+          }
+
+          let parsed;
+          try {
+            parsed = JSON.parse(data);
+          } catch {
+            continue;
+          }
+
+          const delta = extractStreamText(provider, parsed);
+          if (!delta) continue;
+
+          outputBuffer += delta;
+
+          while (outputBuffer.includes('\n')) {
+            const idx = outputBuffer.indexOf('\n');
+            const candidate = outputBuffer.slice(0, idx).trim();
+            outputBuffer = outputBuffer.slice(idx + 1);
+
+            if (!candidate) {
+              continue;
+            }
+
+            try {
+              JSON.parse(candidate);
+              res.write(candidate + '\n');
+            } catch {
+              // Not complete JSON yet; put it back and wait for more
+              outputBuffer = candidate + '\n' + outputBuffer;
+              break;
+            }
+          }
+        }
+      });
+
+      proxyRes.on('end', () => {
+        res.end();
+      });
+    });
+
+    req.on('close', () => {
+      proxyReq.destroy();
+    });
+
+    proxyReq.on('error', (e) => {
+      console.error('A2UI proxy error:', e);
+      if (!res.headersSent) {
+        res.writeHead(500, { 'Content-Type': 'application/json' });
+      }
+      res.end(JSON.stringify({ error: 'A2UI proxy request failed' }));
+    });
+
+    proxyReq.write(config.postData);
+    proxyReq.end();
+  } catch (e) {
+    console.error('A2UI error:', e);
+    res.writeHead(400, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ error: e.message }));
+  }
+}
+
 // Get image provider config based on provider name
 // Supports user-provided API keys via request body, falling back to server defaults
 function getImageProviderConfig(provider, body) {
@@ -604,6 +970,11 @@ function routeHandler(req, res) {
   if (pathname === '/api/chat/stream' && req.method === 'POST') {
     if (!requireAuth(req, res)) return;
     return handleChatStreamProxy(req, res);
+  }
+
+  if (pathname === '/api/a2ui' && req.method === 'POST') {
+    if (!requireAuth(req, res)) return;
+    return handleA2UI(req, res);
   }
 
   if (pathname === '/api/images/generate' && req.method === 'POST') {

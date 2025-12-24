@@ -85,9 +85,14 @@ export function A2UIRenderer({ component, actionCallback, className, style }: A2
 
   const Component = entry.component as React.ComponentType<Record<string, unknown> & { onAction?: ActionHandler }>;
 
+  const children = component.children?.map((child) => (
+    <A2UIRenderer key={child.id} component={child} actionCallback={actionCallback} />
+  ));
+
   return (
-    <div style={layoutStyle} className={className} data-a2ui-id={component.id}>
+    <div style={{ ...layoutStyle, ...style }} className={className} data-a2ui-id={component.id}>
       <Component {...(validProps as Record<string, unknown>)} onAction={handleAction} />
+      {children}
     </div>
   );
 }

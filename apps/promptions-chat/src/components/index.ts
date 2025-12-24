@@ -10,3 +10,5 @@ export { Login } from "./Login";
 export { ModelSelector } from "./ModelSelector";
 export { ErrorBoundary, ErrorFallback } from "./ErrorBoundary";
 export { PromptExport } from "./PromptExport";
+export { A2UIPanel } from "./A2UIPanel";
+export { ChatPanelFSM } from "./ChatPanelFSM";

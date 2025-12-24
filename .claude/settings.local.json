@@ -38,7 +38,9 @@
       "Bash(AUTH_USERNAME=admin AUTH_PASSWORD=test123 node:*)",
       "Bash(find:*)",
       "Bash(\"C:\\Program Files (x86)\\Google\\Cloud SDK\\google-cloud-sdk\\bin\\gcloud.cmd\" secrets versions access latest --secret=AUTH_USERNAME --project=gen-lang-client-0038902874)",
-      "Bash(\"C:\\Program Files (x86)\\Google\\Cloud SDK\\google-cloud-sdk\\bin\\gcloud.cmd\" builds submit --config=cloudbuild.yaml --project=gen-lang-client-0038902874 --substitutions=COMMIT_SHA=password-update \"C:\\Users\\prest\\Desktop\\Desktop_Projects\\Cool-Tools\\Promptions\")"
+      "Bash(\"C:\\Program Files (x86)\\Google\\Cloud SDK\\google-cloud-sdk\\bin\\gcloud.cmd\" builds submit --config=cloudbuild.yaml --project=gen-lang-client-0038902874 --substitutions=COMMIT_SHA=password-update \"C:\\Users\\prest\\Desktop\\Desktop_Projects\\Cool-Tools\\Promptions\")",
+      "Bash(cat:*)",
+      "Bash(yarn add:*)"
     ],
     "deny": [],
     "ask": []

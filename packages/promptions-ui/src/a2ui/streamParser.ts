@@ -75,7 +75,7 @@ export class A2UIStreamParser {
 
     switch (message.type) {
       case "component":
-        this.addComponent(message.data);
+        this.addComponent(message.data, true);
         break;
 
       case "update":
@@ -98,7 +98,7 @@ export class A2UIStreamParser {
     this.state.version = this.version;
   }
 
-  private addComponent(component: A2UIComponent): void {
+  private addComponent(component: A2UIComponent, isRoot = false): void {
     if (this.state.components.size >= this.config.maxComponents) {
       this.onWarning?.("Max components limit reached");
       return;
@@ -107,11 +107,8 @@ export class A2UIStreamParser {
     if (component.id) {
       this.state.components.set(component.id, component);
 
-      // If no children or root, this might be a root component
-      if (!component.children || component.children.length === 0) {
-        if (!this.state.rootIds.includes(component.id)) {
-          this.state.rootIds.push(component.id);
-        }
+      if (isRoot && !this.state.rootIds.includes(component.id)) {
+        this.state.rootIds.push(component.id);
       }
 
       // Add children

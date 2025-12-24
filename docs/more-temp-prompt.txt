@@ -1,0 +1,15 @@
+# More Prompts - Immediate Next Steps
+
+## 1) Make A2UI bi-directional (actions -> updates)
+- Update `A2UIProvider.sendAction()` to optionally open a streaming response (same parser) so the server can reply with `update/remove/component` messages.
+- Update `/api/a2ui` to accept `{ action }` and stream NDJSON UI updates in response (instead of `204`).
+
+## 2) Expand the approved A2UI component catalog
+- Add a few higher-leverage primitives to `packages/promptions-ui/src/a2ui/defaultComponents.tsx` (all with Zod schemas):
+  - `Card`, `Alert`, `Badge`, `Table`, `Checkbox`, `Select`, `Progress`
+
+## 3) Integrate FSM streaming UX into the main chat flow
+- Replace the chained `useEffect` orchestration in `apps/promptions-chat/src/App.tsx` with the FSM-based hooks in `apps/promptions-chat/src/machine/*` (cancel/retry/queue).
+
+## 4) Tighten codegen sandboxing
+- Revisit `CodeRenderer` iframe sandbox policy (e.g. remove `allow-same-origin` by default, stricter script handling/whitelist) to better match “sandboxing for security”.

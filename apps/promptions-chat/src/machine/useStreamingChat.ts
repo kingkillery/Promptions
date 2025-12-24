@@ -1,14 +1,16 @@
-import { useCallback } from "react";
+import { useCallback, useEffect } from "react";
 import { useMachine } from "@xstate/react";
-import { fromCallback, fromPromise, setup } from "xstate";
+import { fromCallback, setup } from "xstate";
 import { ChatService, ApiKeys } from "../services/ChatService";
 import type { ModelInfo } from "../config/ModelConfig";
+import type { VisualOptionSet, BasicOptions } from "@promptions/promptions-ui";
+import { PromptionsService, ChatMessage } from "../services/PromptionsService";
 
 export interface Message {
   id: string;
   role: "user" | "assistant" | "error";
   content: string;
-  options?: Record<string, unknown>;
+  options?: BasicOptions;
   optionsDone?: boolean;
   contentDone?: boolean;
 }
@@ -16,9 +18,11 @@ export interface Message {
 interface ChatContext {
   messages: Message[];
   pendingMessage: string;
+  refreshMessageId: string;
   error: string | null;
   selectedModel: ModelInfo | null;
   apiKeys: ApiKeys;
+  optionSet: VisualOptionSet<BasicOptions> | null;
 }
 
 type ChatEvent =
@@ -26,17 +30,55 @@ type ChatEvent =
   | { type: "CANCEL" }
   | { type: "RETRY" }
   | { type: "REFRESH_OPTIONS"; messageId: string }
+  | { type: "OPTIONS_UPDATE"; options: BasicOptions; done: boolean }
   | { type: "CONTENT_UPDATE"; content: string; done: boolean }
+  | { type: "OPTIONS_DONE" }
   | { type: "STREAM_DONE" }
   | { type: "STREAM_ERROR"; error: string }
   | { type: "MODEL_CHANGE"; model: ModelInfo }
-  | { type: "API_KEYS_CHANGE"; apiKeys: ApiKeys };
+  | { type: "API_KEYS_CHANGE"; apiKeys: ApiKeys }
+  | { type: "OPTION_SET_CHANGE"; optionSet: VisualOptionSet<BasicOptions> };
 
-type StreamChatInput = {
+type StreamOptionsInput = {
   messages: Message[];
+  optionSet: VisualOptionSet<BasicOptions> | null;
+  model: ModelInfo | null;
+  apiKeys: ApiKeys;
+  isRefresh: boolean;
+  refreshMessageId: string;
+};
+
+type StreamContentInput = {
+  messages: Message[];
+  optionSet: VisualOptionSet<BasicOptions> | null;
   model: ModelInfo | null;
   apiKeys: ApiKeys;
 };
+
+// Helper to convert Message[] to ChatMessage[]
+function elaborateMessagesWithOptions(messages: Message[]): ChatMessage[] {
+  const output: ChatMessage[] = [];
+  for (const msg of messages) {
+    if (msg.role === "user") {
+      output.push({ role: "user", content: msg.content });
+    }
+    if (msg.role === "assistant" && msg.options) {
+      const options = msg.options;
+      if (options.prettyPrintAsConversation) {
+        const { question, answer } = options.prettyPrintAsConversation();
+        output.push({ role: "assistant", content: question });
+        output.push({ role: "user", content: answer });
+        output.push({ role: "assistant", content: msg.content });
+      } else if (options.prettyPrint) {
+        output.push({ role: "user", content: options.prettyPrint() });
+        output.push({ role: "assistant", content: msg.content });
+      } else {
+        output.push({ role: "assistant", content: msg.content });
+      }
+    }
+  }
+  return output;
+}
 
 const chatSetup = setup({
   types: {} as {
@@ -44,27 +86,89 @@ const chatSetup = setup({
     events: ChatEvent;
   },
   actors: {
-    streamChat: fromCallback<ChatEvent, StreamChatInput>(({ input, sendBack }) => {
-      const chat = new ChatService();
+    streamOptions: fromCallback<ChatEvent, StreamOptionsInput>(({ input, sendBack }) => {
       const abortController = new AbortController();
-      let doneSent = false;
+      const chat = new ChatService();
+
+      if (!input.optionSet) {
+        sendBack({ type: "OPTIONS_DONE" });
+        return () => {};
+      }
+
+      const promptions = new PromptionsService(chat, input.optionSet);
 
       (async () => {
         try {
-          const history: Array<{ role: "user" | "assistant" | "system"; content: string }> = input.messages.map((m) => {
-            const role = m.role === "error" ? "system" : m.role;
-            return {
-              role: role as "user" | "assistant" | "system",
-              content: m.content,
-            };
-          });
+          // Build history for options request
+          const msgs = input.isRefresh ? input.messages.slice(0, -1) : input.messages.slice(0, -2);
+          const history = elaborateMessagesWithOptions(msgs);
+          const userMessage = input.isRefresh
+            ? input.messages.find((m) => m.id === input.refreshMessageId)?.content
+            : input.messages[input.messages.length - 2]?.content;
+
+          if (userMessage) {
+            history.push({ role: "user", content: userMessage });
+          }
+
+          if (input.isRefresh) {
+            const refreshMsg = input.messages.find((m) => m.id === input.refreshMessageId);
+            if (refreshMsg?.options) {
+              await promptions.refreshOptions(refreshMsg.options, history, (options, done) => {
+                sendBack({ type: "OPTIONS_UPDATE", options: options as BasicOptions, done });
+                if (done) {
+                  sendBack({ type: "OPTIONS_DONE" });
+                }
+              });
+            }
+          } else {
+            await promptions.getOptions(history, (options, done) => {
+              sendBack({ type: "OPTIONS_UPDATE", options: options as BasicOptions, done });
+              if (done) {
+                sendBack({ type: "OPTIONS_DONE" });
+              }
+            });
+          }
+        } catch (err) {
+          if (err instanceof DOMException && err.name === "AbortError") {
+            return;
+          }
+          const message = err instanceof Error ? err.message : "Unknown error";
+          sendBack({ type: "STREAM_ERROR", error: message });
+        }
+      })();
+
+      return () => {
+        abortController.abort("streamOptions stopped");
+      };
+    }),
+
+    streamContent: fromCallback<ChatEvent, StreamContentInput>(({ input, sendBack }) => {
+      const chat = new ChatService();
+      const abortController = new AbortController();
+
+      (async () => {
+        try {
+          // Build history with options elaborated
+          const history: ChatMessage[] = [
+            {
+              role: "system",
+              content:
+                "You are a helpful AI chat bot. When responding to a user consider whether they have provided any additional settings or selections. If they have, do not ask them extra follow-up questions but continue with their intent based on the context.",
+            },
+            ...elaborateMessagesWithOptions(input.messages.slice(0, -1)),
+          ];
+
+          // Add the current message's options
+          const lastMsg = input.messages[input.messages.length - 1];
+          if (lastMsg?.options?.prettyPrint) {
+            history.push({ role: "user", content: lastMsg.options.prettyPrint() });
+          }
 
           await chat.streamChat(
             history,
             (content, done) => {
               sendBack({ type: "CONTENT_UPDATE", content, done });
-              if (done && !doneSent) {
-                doneSent = true;
+              if (done) {
                 sendBack({ type: "STREAM_DONE" });
               }
             },
@@ -80,11 +184,8 @@ const chatSetup = setup({
       })();
 
       return () => {
-        abortController.abort("streamChat stopped");
+        abortController.abort("streamContent stopped");
       };
-    }),
-    refreshOptions: fromPromise(async () => {
-      // Placeholder - implement based on server API.
     }),
   },
 });
@@ -95,9 +196,11 @@ const chatMachine = chatSetup.createMachine({
   context: {
     messages: [],
     pendingMessage: "",
+    refreshMessageId: "",
     error: null,
     selectedModel: null,
     apiKeys: {},
+    optionSet: null,
   },
   states: {
     idle: {
@@ -105,31 +208,37 @@ const chatMachine = chatSetup.createMachine({
         SEND: {
           target: "preparing",
           actions: chatSetup.assign({
-            pendingMessage: ({ context, event }) => (event.type === "SEND" ? event.content : context.pendingMessage),
+            pendingMessage: ({ event }) => (event as { type: "SEND"; content: string }).content,
           }),
         },
         MODEL_CHANGE: {
           actions: chatSetup.assign({
-            selectedModel: ({ context, event }) => (event.type === "MODEL_CHANGE" ? event.model : context.selectedModel),
+            selectedModel: ({ event }) => (event as { type: "MODEL_CHANGE"; model: ModelInfo }).model,
           }),
         },
         API_KEYS_CHANGE: {
           actions: chatSetup.assign({
-            apiKeys: ({ context, event }) => (event.type === "API_KEYS_CHANGE" ? event.apiKeys : context.apiKeys),
+            apiKeys: ({ event }) => (event as { type: "API_KEYS_CHANGE"; apiKeys: ApiKeys }).apiKeys,
+          }),
+        },
+        OPTION_SET_CHANGE: {
+          actions: chatSetup.assign({
+            optionSet: ({ event }) => (event as { type: "OPTION_SET_CHANGE"; optionSet: VisualOptionSet<BasicOptions> }).optionSet,
           }),
         },
       },
     },
+
     preparing: {
       entry: chatSetup.assign({
         messages: ({ context }) => [
           ...context.messages,
-          { id: crypto.randomUUID(), role: "user", content: context.pendingMessage },
+          { id: crypto.randomUUID(), role: "user" as const, content: context.pendingMessage },
           {
             id: crypto.randomUUID(),
-            role: "assistant",
+            role: "assistant" as const,
             content: "",
-            options: {},
+            options: context.optionSet?.emptyOptions(),
             optionsDone: false,
             contentDone: false,
           },
@@ -137,13 +246,61 @@ const chatMachine = chatSetup.createMachine({
         pendingMessage: "",
         error: null,
       }),
-      always: "streaming",
+      always: "streamingOptions",
     },
-    streaming: {
+
+    streamingOptions: {
       invoke: {
-        src: "streamChat",
+        src: "streamOptions",
         input: ({ context }) => ({
           messages: context.messages,
+          optionSet: context.optionSet,
+          model: context.selectedModel,
+          apiKeys: context.apiKeys,
+          isRefresh: false,
+          refreshMessageId: "",
+        }),
+      },
+      on: {
+        OPTIONS_UPDATE: {
+          actions: chatSetup.assign({
+            messages: ({ context, event }) => {
+              const e = event as { type: "OPTIONS_UPDATE"; options: BasicOptions; done: boolean };
+              const msgs = [...context.messages];
+              const last = msgs[msgs.length - 1];
+              if (last?.role === "assistant" && context.optionSet) {
+                last.options = context.optionSet.mergeOptions(
+                  (last.options || context.optionSet.emptyOptions()) as BasicOptions,
+                  e.options,
+                );
+                last.optionsDone = e.done;
+              }
+              return msgs;
+            },
+          }),
+        },
+        OPTIONS_DONE: { target: "streamingContent" },
+        STREAM_ERROR: {
+          target: "error",
+          actions: chatSetup.assign({
+            error: ({ event }) => (event as { type: "STREAM_ERROR"; error: string }).error,
+          }),
+        },
+        CANCEL: {
+          target: "idle",
+          actions: chatSetup.assign({
+            messages: ({ context }) => context.messages.slice(0, -2),
+          }),
+        },
+      },
+    },
+
+    streamingContent: {
+      invoke: {
+        src: "streamContent",
+        input: ({ context }) => ({
+          messages: context.messages,
+          optionSet: context.optionSet,
           model: context.selectedModel,
           apiKeys: context.apiKeys,
         }),
@@ -152,16 +309,12 @@ const chatMachine = chatSetup.createMachine({
         CONTENT_UPDATE: {
           actions: chatSetup.assign({
             messages: ({ context, event }) => {
-              if (event.type !== "CONTENT_UPDATE") {
-                return context.messages;
-              }
+              const e = event as { type: "CONTENT_UPDATE"; content: string; done: boolean };
               const msgs = [...context.messages];
               const last = msgs[msgs.length - 1];
               if (last?.role === "assistant") {
-                last.content = event.content;
-                if (event.done) {
-                  last.contentDone = true;
-                }
+                last.content = e.content;
+                last.contentDone = e.done;
               }
               return msgs;
             },
@@ -171,65 +324,142 @@ const chatMachine = chatSetup.createMachine({
         STREAM_ERROR: {
           target: "error",
           actions: chatSetup.assign({
-            error: ({ context, event }) => (event.type === "STREAM_ERROR" ? event.error : context.error),
+            error: ({ event }) => (event as { type: "STREAM_ERROR"; error: string }).error,
           }),
         },
         CANCEL: {
-          target: "idle",
-          actions: chatSetup.assign({ messages: ({ context }) => context.messages.slice(0, -1) }),
+          target: "complete",
+          actions: chatSetup.assign({
+            messages: ({ context }) => {
+              const msgs = [...context.messages];
+              const last = msgs[msgs.length - 1];
+              if (last?.role === "assistant") {
+                last.contentDone = true;
+              }
+              return msgs;
+            },
+          }),
         },
       },
     },
+
+    refreshingOptions: {
+      invoke: {
+        src: "streamOptions",
+        input: ({ context }) => ({
+          messages: context.messages,
+          optionSet: context.optionSet,
+          model: context.selectedModel,
+          apiKeys: context.apiKeys,
+          isRefresh: true,
+          refreshMessageId: context.refreshMessageId,
+        }),
+      },
+      on: {
+        OPTIONS_UPDATE: {
+          actions: chatSetup.assign({
+            messages: ({ context, event }) => {
+              const e = event as { type: "OPTIONS_UPDATE"; options: BasicOptions; done: boolean };
+              const msgs = [...context.messages];
+              const target = msgs.find((m) => m.id === context.refreshMessageId);
+              if (target?.role === "assistant" && context.optionSet) {
+                target.options = context.optionSet.mergeOptions(
+                  (target.options || context.optionSet.emptyOptions()) as BasicOptions,
+                  e.options,
+                );
+                target.optionsDone = e.done;
+              }
+              return msgs;
+            },
+          }),
+        },
+        OPTIONS_DONE: {
+          target: "complete",
+          actions: chatSetup.assign({ refreshMessageId: "" }),
+        },
+        STREAM_ERROR: {
+          target: "error",
+          actions: chatSetup.assign({
+            error: ({ event }) => (event as { type: "STREAM_ERROR"; error: string }).error,
+            refreshMessageId: "",
+          }),
+        },
+        CANCEL: {
+          target: "complete",
+          actions: chatSetup.assign({ refreshMessageId: "" }),
+        },
+      },
+    },
+
     complete: {
       on: {
         SEND: {
           target: "preparing",
           actions: chatSetup.assign({
-            pendingMessage: ({ context, event }) => (event.type === "SEND" ? event.content : context.pendingMessage),
+            pendingMessage: ({ event }) => (event as { type: "SEND"; content: string }).content,
           }),
         },
-        REFRESH_OPTIONS: "refreshing",
+        REFRESH_OPTIONS: {
+          target: "refreshingOptions",
+          actions: chatSetup.assign({
+            refreshMessageId: ({ event }) => (event as { type: "REFRESH_OPTIONS"; messageId: string }).messageId,
+            messages: ({ context, event }) => {
+              const e = event as { type: "REFRESH_OPTIONS"; messageId: string };
+              // Clear options and content for the refreshed message
+              const msgs = [...context.messages];
+              const target = msgs.find((m) => m.id === e.messageId);
+              if (target?.role === "assistant" && context.optionSet) {
+                target.options = context.optionSet.emptyOptions();
+                target.optionsDone = false;
+                target.content = "";
+                target.contentDone = false;
+              }
+              // Remove all messages after the refresh target
+              const idx = msgs.indexOf(target!);
+              return msgs.slice(0, idx + 1);
+            },
+          }),
+        },
         MODEL_CHANGE: {
           actions: chatSetup.assign({
-            selectedModel: ({ context, event }) => (event.type === "MODEL_CHANGE" ? event.model : context.selectedModel),
+            selectedModel: ({ event }) => (event as { type: "MODEL_CHANGE"; model: ModelInfo }).model,
           }),
         },
         API_KEYS_CHANGE: {
           actions: chatSetup.assign({
-            apiKeys: ({ context, event }) => (event.type === "API_KEYS_CHANGE" ? event.apiKeys : context.apiKeys),
+            apiKeys: ({ event }) => (event as { type: "API_KEYS_CHANGE"; apiKeys: ApiKeys }).apiKeys,
+          }),
+        },
+        OPTION_SET_CHANGE: {
+          actions: chatSetup.assign({
+            optionSet: ({ event }) => (event as { type: "OPTION_SET_CHANGE"; optionSet: VisualOptionSet<BasicOptions> }).optionSet,
           }),
         },
       },
     },
-    refreshing: {
-      invoke: {
-        src: "refreshOptions",
-        input: ({ context, event }) => ({
-          messageId: event.type === "REFRESH_OPTIONS" ? event.messageId : "",
-          messages: context.messages,
-        }),
-        onDone: { target: "complete" },
-        onError: { target: "error" },
-      },
-      on: { CANCEL: "complete" },
-    },
+
     error: {
       on: {
         SEND: {
           target: "preparing",
           actions: chatSetup.assign({
-            pendingMessage: ({ context, event }) => (event.type === "SEND" ? event.content : context.pendingMessage),
+            pendingMessage: ({ event }) => (event as { type: "SEND"; content: string }).content,
           }),
         },
-        RETRY: "streaming",
+        RETRY: "streamingOptions",
         MODEL_CHANGE: {
           actions: chatSetup.assign({
-            selectedModel: ({ context, event }) => (event.type === "MODEL_CHANGE" ? event.model : context.selectedModel),
+            selectedModel: ({ event }) => (event as { type: "MODEL_CHANGE"; model: ModelInfo }).model,
           }),
         },
         API_KEYS_CHANGE: {
           actions: chatSetup.assign({
-            apiKeys: ({ context, event }) => (event.type === "API_KEYS_CHANGE" ? event.apiKeys : context.apiKeys),
+            apiKeys: ({ event }) => (event as { type: "API_KEYS_CHANGE"; apiKeys: ApiKeys }).apiKeys,
+          }),
+        },
+        OPTION_SET_CHANGE: {
+          actions: chatSetup.assign({
+            optionSet: ({ event }) => (event as { type: "OPTION_SET_CHANGE"; optionSet: VisualOptionSet<BasicOptions> }).optionSet,
           }),
         },
       },
@@ -237,8 +467,15 @@ const chatMachine = chatSetup.createMachine({
   },
 });
 
-export function useStreamingChat() {
-  const [state, send, actor] = useMachine(chatMachine);
+export function useStreamingChat(optionSet?: VisualOptionSet<BasicOptions>) {
+  const [state, send] = useMachine(chatMachine);
+
+  // Sync optionSet when it changes
+  useEffect(() => {
+    if (optionSet) {
+      send({ type: "OPTION_SET_CHANGE", optionSet });
+    }
+  }, [optionSet, send]);
 
   const sendMessage = useCallback(
     (content: string) => {
@@ -276,18 +513,21 @@ export function useStreamingChat() {
     [send],
   );
 
+  const currentState = state.value as string;
+
   return {
-    state,
+    state: currentState,
     messages: state.context.messages,
     error: state.context.error,
-    isLoading: ["preparing", "streaming", "refreshing"].includes(state.value as string),
-    canSend: ["idle", "complete"].includes(state.value as string),
+    isStreaming: ["streamingOptions", "streamingContent", "refreshingOptions"].includes(currentState),
+    isStreamingOptions: currentState === "streamingOptions" || currentState === "refreshingOptions",
+    isStreamingContent: currentState === "streamingContent",
+    canSend: ["idle", "complete", "error"].includes(currentState),
     sendMessage,
     cancel,
     retry,
     refreshOptions,
     setModel,
     setApiKeys,
-    actor,
   };
 }

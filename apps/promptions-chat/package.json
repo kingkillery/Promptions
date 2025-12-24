@@ -15,7 +15,7 @@
         "@fluentui/react-components": "^9.54.0",
         "@fluentui/react-icons": "^2.0.258",
         "@promptions/promptions-ui": "workspace:*",
-        "@xstate/react": "^2.0.0",
+        "@xstate/react": "^4.0.0",
         "immer": "^10.1.1",
         "openai": "^5.8.2",
         "react": "^18.3.1",
