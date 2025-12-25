@@ -1,0 +1,40 @@
+# Research: Advancing A2UI Realtime UI Generation
+
+## Current State
+- A2UI protocol with NDJSON streaming
+- 12 components: Text, Heading, Button, TextInput, Image, KeyValueList, Card, Alert, Badge, Table, Checkbox, Select, Progress
+- FSM streaming: idle→preparing→streaming→complete
+- Flex layout, Zod validation, bi-directional actions
+
+## Research Areas
+1. Advanced Components: charts, graphs, maps, calendars, code blocks, markdown, tabs, modals, carousels
+2. Streaming/State: optimistic updates, partial streaming, error recovery, Suspense, offline support
+3. AI-Assisted UI: component discovery, prop inference, layout suggestions, context awareness
+4. A11y/i18n: ARIA live regions, translations, screen readers, reduced motion
+5. Performance: virtualization, lazy loading, bundle impact, backpressure
+6. Design System: tokens, theming, typography/spacing scales
+7. DX: visual debugger, schema docs, component preview, stream replay
+8. Security: sanitization, resource limits, CSP, rate limiting
+
+## Questions
+- What for A2UI v2? (versioning, plugins)
+- OpenAI GPTs Actions UI patterns?
+- Vercel AI SDK Generative UI approaches?
+- When raw HTML vs declarative? (Google GenUI)
+- AI-readable component descriptions? (Tambo)
+- LangChain/LlamaIndex UI tool outputs?
+- Multi-user A2UI collaboration?
+
+## Deliverable
+1. Executive Summary
+2. Category Analysis
+3. Priority (H/M/L)
+4. Code Examples
+5. Lib Recommendations
+6. Competitive Analysis
+7. A2UI Extensions Proposal
+8. Research Links
+
+Focus: actionable 3-6 month roadmap.
+
+See also: researchprompt.md for full version

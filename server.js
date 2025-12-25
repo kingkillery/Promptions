@@ -100,19 +100,19 @@ function serveFile(req, res, filePath, rootDir) {
         // Prevents serving HTML for missing JS/CSS/Images
         const accept = req.headers.accept || '';
         if (accept.includes('text/html') || !path.extname(req.url)) {
-            const indexPath = path.join(rootDir, 'index.html');
-            fs.readFile(indexPath, (err2, content2) => {
-                if (err2) {
-                    res.writeHead(404, { 'Content-Type': 'text/plain' });
-                    res.end('Not Found');
-                } else {
-                    res.writeHead(200, { 'Content-Type': 'text/html' });
-                    res.end(content2);
-                }
-            });
+          const indexPath = path.join(rootDir, 'index.html');
+          fs.readFile(indexPath, (err2, content2) => {
+            if (err2) {
+              res.writeHead(404, { 'Content-Type': 'text/plain' });
+              res.end('Not Found');
+            } else {
+              res.writeHead(200, { 'Content-Type': 'text/html' });
+              res.end(content2);
+            }
+          });
         } else {
-            res.writeHead(404, { 'Content-Type': 'text/plain' });
-            res.end('Not Found');
+          res.writeHead(404, { 'Content-Type': 'text/plain' });
+          res.end('Not Found');
         }
       } else {
         res.writeHead(500, { 'Content-Type': 'text/plain' });
@@ -357,14 +357,14 @@ async function handleChatStreamProxy(req, res) {
 function buildA2UISystemPrompt(components) {
   const allowed = Array.isArray(components)
     ? components
-        .map((c) => {
-          const name = typeof c?.name === 'string' ? c.name : '';
-          const desc = typeof c?.description === 'string' ? c.description : '';
-          const category = typeof c?.category === 'string' ? c.category : '';
-          return name ? `- ${name}${category ? ` (${category})` : ''}${desc ? `: ${desc}` : ''}` : null;
-        })
-        .filter(Boolean)
-        .join('\n')
+      .map((c) => {
+        const name = typeof c?.name === 'string' ? c.name : '';
+        const desc = typeof c?.description === 'string' ? c.description : '';
+        const category = typeof c?.category === 'string' ? c.category : '';
+        return name ? `- ${name}${category ? ` (${category})` : ''}${desc ? `: ${desc}` : ''}` : null;
+      })
+      .filter(Boolean)
+      .join('\n')
     : '';
 
   return `You are an API that emits UI using the A2UI protocol.
@@ -380,11 +380,13 @@ Each line must match one of these shapes:
 {"type":"remove","id":"<componentId>"}
 {"type":"error","message":"...","recoverable":false}
 
-Rules:
-- Use ONLY allowed component types listed below.
+Strict Mode Rules:
+- Use ONLY allowed component types listed below. NO exceptions.
+- Do NOT hallucinate component types or props that are not standard (e.g. no "valid" or "error" props unless specified).
 - Generate stable, unique component ids (e.g. "ui-root", "ui-1", "ui-2").
 - Keep props JSON-serializable.
 - Keep EACH JSON object on ONE line (no pretty-print).
+- For text content, ensure it is safe and semantic.
 
 Allowed components:
 ${allowed || '- (none provided)'}
@@ -408,14 +410,14 @@ function extractStreamText(provider, parsed) {
 function buildA2UIActionPrompt(action, components) {
   const allowed = Array.isArray(components)
     ? components
-        .map((c) => {
-          const name = typeof c?.name === 'string' ? c.name : '';
-          const desc = typeof c?.description === 'string' ? c.description : '';
-          const category = typeof c?.category === 'string' ? c.category : '';
-          return name ? `- ${name}${category ? ` (${category})` : ''}${desc ? `: ${desc}` : ''}` : null;
-        })
-        .filter(Boolean)
-        .join('\n')
+      .map((c) => {
+        const name = typeof c?.name === 'string' ? c.name : '';
+        const desc = typeof c?.description === 'string' ? c.description : '';
+        const category = typeof c?.category === 'string' ? c.category : '';
+        return name ? `- ${name}${category ? ` (${category})` : ''}${desc ? `: ${desc}` : ''}` : null;
+      })
+      .filter(Boolean)
+      .join('\n')
     : '';
 
   return `You are an API that updates UI based on user actions using the A2UI protocol.

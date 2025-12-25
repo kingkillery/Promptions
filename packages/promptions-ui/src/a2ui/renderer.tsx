@@ -90,7 +90,14 @@ export function A2UIRenderer({ component, actionCallback, className, style }: A2
   ));
 
   return (
-    <div style={{ ...layoutStyle, ...style }} className={className} data-a2ui-id={component.id}>
+    <div
+      style={{ ...layoutStyle, ...style }}
+      className={className}
+      data-a2ui-id={component.id}
+      aria-live="polite"
+      aria-relevant="additions"
+      aria-atomic="false"
+    >
       <Component {...(validProps as Record<string, unknown>)} onAction={handleAction} />
       {children}
     </div>

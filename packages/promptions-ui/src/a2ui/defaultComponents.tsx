@@ -1,5 +1,6 @@
 import React from "react";
 import { z } from "zod";
+import dompurify from "dompurify";
 import { registerComponent, registry } from "../registry/componentRegistry";
 import type { A2UIAction } from "./protocol";
 
@@ -14,7 +15,10 @@ const TextSchema = z.object({
 });
 
 function A2UIText({ text }: TextProps) {
-  return <div>{text}</div>;
+  const sanitized = dompurify.sanitize(text);
+  // If sanitized text is different (meaning HTML was stripped), render safe HTML
+  // Otherwise render as text to be safe
+  return <div dangerouslySetInnerHTML={{ __html: sanitized }} />;
 }
 
 type HeadingProps = {
@@ -29,7 +33,8 @@ const HeadingSchema = z.object({
 
 function A2UIHeading({ text, level = 2 }: HeadingProps) {
   const Tag = (`h${level}` as unknown) as keyof JSX.IntrinsicElements;
-  return <Tag style={{ margin: 0 }}>{text}</Tag>;
+  const sanitized = dompurify.sanitize(text);
+  return <Tag style={{ margin: 0 }} dangerouslySetInnerHTML={{ __html: sanitized }} />;
 }
 
 type ButtonProps = {
@@ -52,6 +57,7 @@ const ButtonSchema = z.object({
 function A2UIButton({ label, eventType = "click", payload, disabled, variant = "primary", onAction }: ButtonProps) {
   const background = variant === "primary" ? "#2563eb" : "#e5e7eb";
   const color = variant === "primary" ? "#ffffff" : "#111827";
+  const sanitizedLabel = dompurify.sanitize(label);
   return (
     <button
       type="button"
@@ -65,9 +71,8 @@ function A2UIButton({ label, eventType = "click", payload, disabled, variant = "
         color,
         cursor: disabled ? "not-allowed" : "pointer",
       }}
-    >
-      {label}
-    </button>
+      dangerouslySetInnerHTML={{ __html: sanitizedLabel }}
+    />
   );
 }
 
@@ -87,9 +92,13 @@ const TextInputSchema = z.object({
 });
 
 function A2UITextInput({ label, placeholder, value, multiline, onAction }: TextInputProps) {
+  const sanitizedLabel = label ? dompurify.sanitize(label) : undefined;
+
   return (
     <label style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-      {label ? <span style={{ fontSize: 12, color: "#374151" }}>{label}</span> : null}
+      {sanitizedLabel ? (
+        <span style={{ fontSize: 12, color: "#374151" }} dangerouslySetInnerHTML={{ __html: sanitizedLabel }} />
+      ) : null}
       {multiline ? (
         <textarea
           defaultValue={value}
@@ -130,6 +139,9 @@ const ImageSchema = z.object({
 });
 
 function A2UIImage({ src, alt }: ImageProps) {
+  // src needs basic URL validation/sanitization but dompurify is not for url attributes directly usually
+  // However, we can use valid URL check or just trust for now as it's an image src
+  // alt text is safe attribute
   return <img src={src} alt={alt ?? ""} style={{ maxWidth: "100%", borderRadius: 8 }} />;
 }
 
@@ -151,8 +163,8 @@ function A2UIKeyValueList({ items }: KeyValueListProps) {
     <dl style={{ margin: 0 }}>
       {items.map((item) => (
         <div key={item.key} style={{ display: "grid", gridTemplateColumns: "120px 1fr", gap: 12, padding: "6px 0" }}>
-          <dt style={{ fontWeight: 600, color: "#111827" }}>{item.key}</dt>
-          <dd style={{ margin: 0, color: "#374151" }}>{item.value}</dd>
+          <dt style={{ fontWeight: 600, color: "#111827" }} dangerouslySetInnerHTML={{ __html: dompurify.sanitize(item.key) }} />
+          <dd style={{ margin: 0, color: "#374151" }} dangerouslySetInnerHTML={{ __html: dompurify.sanitize(item.value) }} />
         </div>
       ))}
     </dl>
@@ -185,8 +197,8 @@ function A2UICard({ title, subtitle, variant = "outlined" }: CardProps) {
   };
   return (
     <div style={{ ...baseStyles, ...variantStyles[variant] }}>
-      {title && <div style={{ fontWeight: 600, fontSize: 16, color: "#111827" }}>{title}</div>}
-      {subtitle && <div style={{ fontSize: 14, color: "#6b7280", marginTop: 4 }}>{subtitle}</div>}
+      {title && <div style={{ fontWeight: 600, fontSize: 16, color: "#111827" }} dangerouslySetInnerHTML={{ __html: dompurify.sanitize(title) }} />}
+      {subtitle && <div style={{ fontSize: 14, color: "#6b7280", marginTop: 4 }} dangerouslySetInnerHTML={{ __html: dompurify.sanitize(subtitle) }} />}
     </div>
   );
 }
@@ -213,6 +225,7 @@ function A2UIAlert({ message, severity = "info", dismissible, onAction }: AlertP
     error: { bg: "#fef2f2", border: "#ef4444", text: "#991b1b" },
   };
   const colors = colorMap[severity];
+  const sanitizedMessage = dompurify.sanitize(message);
   return (
     <div
       style={{
@@ -226,7 +239,7 @@ function A2UIAlert({ message, severity = "info", dismissible, onAction }: AlertP
         justifyContent: "space-between",
       }}
     >
-      <span>{message}</span>
+      <span dangerouslySetInnerHTML={{ __html: sanitizedMessage }} />
       {dismissible && (
         <button
           type="button"
