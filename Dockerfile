@@ -10,6 +10,8 @@ WORKDIR /app
 
 # Copy package files first for better layer caching
 COPY package.json yarn.lock .yarnrc.yml ./
+COPY .yarn ./.yarn
+
 
 # Copy all workspace package.json files (required for yarn workspaces)
 COPY apps/promptions-chat/package.json ./apps/promptions-chat/
@@ -17,8 +19,9 @@ COPY apps/promptions-image/package.json ./apps/promptions-image/
 COPY packages/promptions-llm/package.json ./packages/promptions-llm/
 COPY packages/promptions-ui/package.json ./packages/promptions-ui/
 
-# Install dependencies with frozen lockfile for reproducibility
-RUN yarn install --immutable
+# Install dependencies
+RUN yarn install
+
 
 # =============================================================================
 # Stage 2: Builder - Build all packages and applications

@@ -6,11 +6,10 @@ services:
       context: .
       dockerfile: Dockerfile
     ports:
-      - "8080:80"
-    environment:
-      # OpenAI API key should be provided as an environment variable
-      # For local development, you can set it in your shell before running docker-compose
-      # Or use a .env file (make sure to add .env to your .gitignore)
+      - "8080:8080"
+    env_file:
+      - .env
+
     volumes:
       # Mount .env file if it exists outside the container (optional)
       - ./.env:/app/.env:ro
